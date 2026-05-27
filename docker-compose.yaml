@@ -1,0 +1,64 @@
+name: vivugo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vivugo-postgres
+    environment:
+      POSTGRES_DB: vivugo_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+    ports:
+      - "5432:5432"
+    volumes:
+      - vivugo-postgres-data:/var/lib/postgresql/data
+      - ./vivugo-backend/src/main/resources/db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vivugo_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vivugo-redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./vivugo-backend
+    container_name: vivugo-backend
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/vivugo_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-your_email@gmail.com}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-your_app_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  client:
+    build: ./vivugo-client
+    container_name: vivugo-client
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  admin:
+    build: ./vivugo-admin
+    container_name: vivugo-admin
+    ports:
+      - "5174:80"
+    depends_on:
+      - backend
+
+volumes:
+  vivugo-postgres-data:

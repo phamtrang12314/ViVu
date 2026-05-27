@@ -1,0 +1,26 @@
+name: ViVuGo Backend CI
+
+on:
+  push:
+    paths:
+      - "vivugo-backend/**"
+      - ".github/workflows/vivugo-backend.yml"
+  pull_request:
+    paths:
+      - "vivugo-backend/**"
+      - ".github/workflows/vivugo-backend.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vivugo-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - run: mvn test
