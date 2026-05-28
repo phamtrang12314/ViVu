@@ -62,17 +62,10 @@ deploy_backend_railway:
     url: $RAILWAY_BACKEND_URL
   script:
     - npm install -g @railway/cli
-    - |
-      if [ -z "$RAILWAY_PROJECT_ID" ]; then
-        echo "RAILWAY_PROJECT_ID is required for Railway deployment."
-        exit 1
-      fi
-      railway up vivugo-backend \
-        --path-as-root \
-        --ci \
-        --project "$RAILWAY_PROJECT_ID" \
-        --environment "${RAILWAY_ENVIRONMENT:-production}" \
-        --service "${RAILWAY_BACKEND_SERVICE:-vivugo-backend}"
+    - test -n "$RAILWAY_TOKEN" || (echo "RAILWAY_TOKEN is required" && exit 1)
+    - test -n "$RAILWAY_PROJECT_ID" || (echo "RAILWAY_PROJECT_ID is required" && exit 1)
+    - test -n "$RAILWAY_BACKEND_SERVICE" || (echo "RAILWAY_BACKEND_SERVICE is required" && exit 1)
+    - railway up vivugo-backend --path-as-root --ci --verbose --project "$RAILWAY_PROJECT_ID" --environment "${RAILWAY_ENVIRONMENT:-production}" --service "$RAILWAY_BACKEND_SERVICE"
 
 deploy_client_vercel:
   stage: deploy
