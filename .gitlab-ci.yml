@@ -64,8 +64,19 @@ deploy_backend_railway:
     - npm install -g @railway/cli
     - test -n "$RAILWAY_TOKEN" || (echo "RAILWAY_TOKEN is required" && exit 1)
     - test -n "$RAILWAY_BACKEND_SERVICE" || (echo "RAILWAY_BACKEND_SERVICE is required" && exit 1)
+    - railway --version
     - echo "Deploying backend to Railway service $RAILWAY_BACKEND_SERVICE"
-    - railway up vivugo-backend --path-as-root --ci --verbose --service "$RAILWAY_BACKEND_SERVICE"
+    - |
+      status=0
+      railway up vivugo-backend --path-as-root --ci --verbose --service "$RAILWAY_BACKEND_SERVICE" > railway-deploy.log 2>&1 || status=$?
+      cat railway-deploy.log
+      if [ "$status" != "0" ]; then
+        echo "Railway deploy failed. Check these first:"
+        echo "1. RAILWAY_TOKEN must be a Railway Project Token from the same Railway project."
+        echo "2. The token must be created for the production environment."
+        echo "3. RAILWAY_BACKEND_SERVICE must match the Railway service name exactly."
+        exit "$status"
+      fi
 
 deploy_client_vercel:
   stage: deploy
