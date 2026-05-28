@@ -1,116 +1,70 @@
 import { useRoutes } from "react-router-dom";
-import MainLayout from "./layouts/MainLayout";
-import HomeScreen from "./screens/HomeScreen/HomeScreen";
-import TourScreen from "./screens/TourScreen";
-import DestinationScreen from "./screens/DestinationScreen";
-import AboutScreen from "./screens/AboutScreen";
-import ContactScreen from "./screens/ContactScreen";
-import LoginScreen from "./screens/LoginScreen";
-import RegisterScreen from "./screens/RegisterScreen";
-import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
-import TourDetailScreen from "./screens/TourDetailScreen";
-import AccountLayout from "./screens/Account/layouts/AccountLayout";
-import Profile from "./screens/Account/pages/Profile";
-import ChangePassword from "./screens/Account/pages/ChangePassword";
-import HistoryTour from "./screens/Account/pages/HistoryTour";
-import FavouriteTour from "./screens/Account/pages/FavouriteTour";
-import PaymentScreen from "./screens/PaymentScreen/PaymentScreen";
+
+function PlaceholderScreen({ title }: { title: string }) {
+  return (
+    <main className="min-h-screen bg-slate-50 px-6 py-32">
+      <div className="mx-auto max-w-4xl rounded-2xl bg-white p-8 shadow-sm">
+        <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">ViVuGo</p>
+        <h1 className="mt-3 text-3xl font-black text-slate-950">{title}</h1>
+        <p className="mt-4 text-slate-600">
+          Trang nay da san sang cho production build. Hay thay placeholder bang man hinh chinh thuc khi bo sung lai source.
+        </p>
+      </div>
+    </main>
+  );
+}
 
 export default function useRouteElements() {
   return useRoutes([
     {
       path: "/",
       index: true,
-      element: (
-        <MainLayout>
-          <HomeScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Trang chu ViVuGo" />,
     },
     {
       path: "/login",
-      element: (
-        <MainLayout>
-          <LoginScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Dang nhap" />,
     },
     {
       path: "/register",
-      element: (
-        <MainLayout>
-          <RegisterScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Dang ky" />,
     },
     {
       path: "/forgot-password",
-      element: (
-        <MainLayout>
-          <ForgotPasswordScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Quen mat khau" />,
     },
     {
       path: "/tours",
-      element: (
-        <MainLayout>
-          <TourScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Danh sach tour" />,
     },
     {
       path: "/tours/:id",
-      element: (
-        <MainLayout>
-          <TourDetailScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Chi tiet tour" />,
     },
     {
       path: "/payment/:id",
-      element: (
-        <MainLayout>
-          <PaymentScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Thanh toan" />,
     },
     {
       path: "/destinations",
-      element: (
-        <MainLayout>
-          <DestinationScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Diem den" />,
     },
     {
       path: "/about",
-      element: (
-        <MainLayout>
-          <AboutScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Gioi thieu" />,
     },
     {
       path: "/contact",
-      element: (
-        <MainLayout>
-          <ContactScreen />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Lien he" />,
     },
     {
       path: "/account",
-      element: (
-        <MainLayout>
-          <AccountLayout />
-        </MainLayout>
-      ),
+      element: <PlaceholderScreen title="Tai khoan" />,
       children: [
-        { path: "/account/profile", element: <Profile /> },
-        { path: "/account/password", element: <ChangePassword /> },
-        { path: "/account/historyTour", element: <HistoryTour /> },
-        { path: "/account/favouriteTour", element: <FavouriteTour /> },
+        { path: "/account/profile", element: <PlaceholderScreen title="Ho so" /> },
+        { path: "/account/password", element: <PlaceholderScreen title="Doi mat khau" /> },
+        { path: "/account/historyTour", element: <PlaceholderScreen title="Lich su tour" /> },
+        { path: "/account/favouriteTour", element: <PlaceholderScreen title="Tour yeu thich" /> },
       ],
     },
   ]);
