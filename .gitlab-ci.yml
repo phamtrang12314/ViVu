@@ -52,7 +52,7 @@ admin_build:
 
 deploy_backend_railway:
   stage: deploy
-  image: node:20-alpine
+  image: ghcr.io/railwayapp/cli:latest
   needs:
     - backend_build
   rules:
@@ -66,7 +66,7 @@ deploy_backend_railway:
     - echo "Deploying backend to Railway service $RAILWAY_BACKEND_SERVICE"
     - |
       status=0
-      npx --yes @railway/cli@latest up vivugo-backend --path-as-root --ci --verbose --service "$RAILWAY_BACKEND_SERVICE" > railway-deploy.log 2>&1 || status=$?
+      railway up vivugo-backend --path-as-root --ci --verbose --service "$RAILWAY_BACKEND_SERVICE" > railway-deploy.log 2>&1 || status=$?
       cat railway-deploy.log
       if [ "$status" != "0" ]; then
         echo "Railway deploy failed. Check these first:"
