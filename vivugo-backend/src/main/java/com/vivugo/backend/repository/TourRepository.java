@@ -30,6 +30,7 @@ public interface TourRepository extends JpaRepository<Tour, String>, JpaSpecific
             "LEFT JOIN FETCH tp.promotion " +
             "LEFT JOIN FETCH t.tourImages " +
             "LEFT JOIN FETCH t.itineraries " +
+            "LEFT JOIN FETCH t.openDates " +
             "WHERE t.tourID = :id")
     @Override
     Optional<Tour> findById(@Param("id") String id);

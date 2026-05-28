@@ -4,6 +4,7 @@ import { MessageCircle, X, Send, Bot, User } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
+import { resolveAssetUrl } from "../../utils/utils";
 
 // Kiểu dữ liệu nhận về từ Backend
 interface MiniTour {
@@ -24,7 +25,7 @@ export default function Chatbox() {
     const [messages, setMessages] = useState<Message[]>([
         {
             role: "bot",
-            content: "Xin chào! Mình là ViVuGo. Bạn muốn đi du lịch ở đâu nào?",
+            content: "Xin ch�o! M�nh l� ViVuGo. B�n mu�n i du l�ch � �u n�o?",
         },
     ]);
     const [input, setInput] = useState("");
@@ -53,7 +54,7 @@ export default function Chatbox() {
                 ...prev,
                 {
                     role: "bot",
-                    content: data?.reply || "Đây là kết quả mình tìm được:",
+                    content: data?.reply || "�y l� k�t qu� m�nh t�m ��c:",
                     suggestedTours: data?.tours || []
                 }
             ]);
@@ -134,8 +135,8 @@ export default function Chatbox() {
                                                 {msg.suggestedTours.map((tour, index) => {
                                                     if (!tour) return null;
                                                     const safeId = tour.tourID || (tour as any).tourId || (tour as any).id;
-                                                    const price = tour.finalPrice ? tour.finalPrice.toLocaleString('vi-VN') + 'đ' : 'Liên hệ';
-                                                    const img = tour.imageURL || 'https://placehold.co/400x256?text=Tour';
+                                                    const price = tour.finalPrice ? tour.finalPrice.toLocaleString('vi-VN') + '' : 'Li�n h�';
+                                                    const img = resolveAssetUrl(tour.imageURL, 'https://placehold.co/400x256?text=Tour');
 
                                                     return (
                                                         <Link 

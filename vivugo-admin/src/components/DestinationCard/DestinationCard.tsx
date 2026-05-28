@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { Destination } from '../../types/destination'
 import { FaChevronRight, FaMapMarkerAlt } from 'react-icons/fa'
+import { resolveAssetUrl } from '../../utils/utils'
 
 export default function DestinationCard({ destination }: { destination: Destination }) {
   return (
@@ -10,7 +11,7 @@ export default function DestinationCard({ destination }: { destination: Destinat
     >
       {/* Ảnh Background */}
       <img
-        src={destination.imageURLs?.[0] || 'https://placehold.co/600x400?text=Destination'}
+        src={resolveAssetUrl(destination.imageURLs?.[0], 'https://placehold.co/600x400?text=Destination')}
         alt={destination.nameDes}
         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
       />

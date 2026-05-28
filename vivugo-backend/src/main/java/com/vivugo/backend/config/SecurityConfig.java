@@ -1,8 +1,10 @@
 package com.vivugo.backend.config;
 
 import com.vivugo.backend.model.enums.RoleType;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -14,17 +16,27 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final ApiRateLimitFilter apiRateLimitFilter;
     private final JwtAuthFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
+    private final String allowedOriginPatterns;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, AuthenticationProvider authenticationProvider) {
+    public SecurityConfig(
+            ApiRateLimitFilter apiRateLimitFilter,
+            JwtAuthFilter jwtAuthFilter,
+            AuthenticationProvider authenticationProvider,
+            @Value("${app.cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}") String allowedOriginPatterns
+    ) {
+        this.apiRateLimitFilter = apiRateLimitFilter;
         this.jwtAuthFilter = jwtAuthFilter;
         this.authenticationProvider = authenticationProvider;
+        this.allowedOriginPatterns = allowedOriginPatterns;
     }
 
     // Bean định nghĩa các quy tắc CORS
@@ -32,10 +44,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Cho phép các nguồn gốc của Front-end
-        configuration.setAllowedOriginPatterns(Arrays.asList(
-                "http://localhost:*",
-                "http://127.0.0.1:*"
-        ));
+        List<String> originPatterns = Arrays.stream(allowedOriginPatterns.split(","))
+                .map(String::trim)
+                .filter(pattern -> !pattern.isEmpty())
+                .toList();
+        configuration.setAllowedOriginPatterns(originPatterns);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
@@ -56,6 +69,7 @@ public class SecurityConfig {
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
+                .addFilterBefore(apiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
 
@@ -69,13 +83,18 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/auth/**", "/api/ai/chat").permitAll()
 
-                        .requestMatchers("/api/tours", "/api/tours/**", "/api/destinations/**", "/api/tour-types/**").permitAll()
-                        .requestMatchers("/api/reviews/**").permitAll()
+                        .requestMatchers("/api/tours", "/api/tours/**", "/api/recommendations/**", "/api/destinations/**", "/api/tour-types/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/tour/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/tour/*/reviewed").hasRole(RoleType.CUSTOMER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/reviews").hasRole(RoleType.CUSTOMER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/reviews/media").hasRole(RoleType.CUSTOMER.name())
                         .requestMatchers("/api/webhooks/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/*").permitAll()
                         .requestMatchers("/images/**").permitAll()
                         .requestMatchers("/api/contact-messages").permitAll()
+                        .requestMatchers("/api/contact-messages/chat/**").permitAll()
 
-                        .requestMatchers("/api/admin/**", "/api/admin/tours/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole(RoleType.ADMIN.name())
                         .requestMatchers("/", "/api", "/api/health", "/actuator/health", "/error").permitAll()
 
                         .anyRequest().authenticated()

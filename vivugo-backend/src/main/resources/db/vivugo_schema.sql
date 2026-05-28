@@ -57,3 +57,9 @@ begin
       foreign key (customer_id) references customers(userid);
   end if;
 end $$;
+
+alter table if exists reviews
+  add column if not exists video_url varchar(1000);
+
+alter table if exists tours
+  add column if not exists review_video_url varchar(1000);
