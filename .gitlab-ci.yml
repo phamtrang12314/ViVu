@@ -61,14 +61,12 @@ deploy_backend_railway:
     name: production/backend
     url: $RAILWAY_BACKEND_URL
   script:
-    - npm install -g @railway/cli
     - test -n "$RAILWAY_TOKEN" || (echo "RAILWAY_TOKEN is required" && exit 1)
     - test -n "$RAILWAY_BACKEND_SERVICE" || (echo "RAILWAY_BACKEND_SERVICE is required" && exit 1)
-    - railway --version
     - echo "Deploying backend to Railway service $RAILWAY_BACKEND_SERVICE"
     - |
       status=0
-      railway up vivugo-backend --path-as-root --ci --verbose --service "$RAILWAY_BACKEND_SERVICE" > railway-deploy.log 2>&1 || status=$?
+      npx --yes @railway/cli@latest up vivugo-backend --path-as-root --ci --verbose --service "$RAILWAY_BACKEND_SERVICE" > railway-deploy.log 2>&1 || status=$?
       cat railway-deploy.log
       if [ "$status" != "0" ]; then
         echo "Railway deploy failed. Check these first:"
