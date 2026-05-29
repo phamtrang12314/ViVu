@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Tour } from '../../types/tour'
-import { formatCurrency } from '../../utils/utils'
+import { formatCurrency, resolveAssetUrl } from '../../utils/utils'
 import { FaMapMarkerAlt, FaStar, FaClock, FaHeart } from 'react-icons/fa'
 import Button from '../Button'
 import React, { useContext } from 'react'
@@ -83,7 +83,7 @@ export default function TourCard({
       <div className="relative h-60 rounded-3xl overflow-hidden mb-4">
         <Link to={`/tours/${safeId}`} className="block w-full h-full">
           <img
-            src={tour.imageURL}
+            src={resolveAssetUrl(tour.imageURL, 'https://placehold.co/400x256/E5E7EB/6B7280?text=Tour')}
             alt={tour.title}
             onError={(e) => {
               e.currentTarget.src = 'https://placehold.co/400x256/E5E7EB/6B7280?text=Tour'

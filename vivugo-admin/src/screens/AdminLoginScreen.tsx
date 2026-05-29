@@ -8,6 +8,7 @@ import { loginAdmin } from '../admin/apis/authAdmin.api'
 import { AppContext } from '../contexts/app.context'
 import type { AuthResponse } from '../types/auth.type'
 import type { SimpleProfile } from '../types/user.type'
+import { resolveAssetUrl } from '../utils/utils'
 
 export default function AdminLoginScreen() {
   const navigate = useNavigate()
@@ -47,7 +48,7 @@ export default function AdminLoginScreen() {
     <main className="min-h-screen bg-slate-950">
       <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12">
         <img
-          src="/images/tours/halong_tour.jpg"
+          src={resolveAssetUrl('/images/tours/halong_tour.jpg')}
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-42"
         />
