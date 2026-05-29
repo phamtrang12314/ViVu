@@ -5,6 +5,11 @@ import { clearLS, getAccessTokenFromLS, saveAccessTokenToLS, setProfileToLS } fr
 import type { AuthResponse } from '../types/auth.type'
 import type { SimpleProfile } from '../types/user.type'
 
+const normalizeApiBaseUrl = (value = 'http://localhost:8081/api/') => {
+  const cleanedValue = value.trim().replace(/\/+$/, '')
+  return cleanedValue.endsWith('/api') ? `${cleanedValue}/` : `${cleanedValue}/api/`
+}
+
 class Http {
   instance: AxiosInstance
   private accessToken: string
@@ -13,7 +18,7 @@ class Http {
   constructor() {
     this.accessToken = getAccessTokenFromLS()
     this.instance = axios.create({
-      baseURL: 'http://localhost:8081/api/',
+      baseURL: normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json'

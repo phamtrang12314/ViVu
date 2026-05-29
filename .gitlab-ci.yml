@@ -1,0 +1,113 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .m2/repository/
+    - vivugo-client/node_modules/
+    - vivugo-admin/node_modules/
+
+backend_build:
+  stage: build
+  image: maven:3.9.6-eclipse-temurin-21
+  script:
+    - cd vivugo-backend
+    - mvn --batch-mode clean package -DskipTests
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - vivugo-backend/target/*.jar
+
+client_build:
+  stage: build
+  image: node:20-alpine
+  script:
+    - cd vivugo-client
+    - npm ci
+    - export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://localhost:8081/api/}"
+    - npm run build
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - vivugo-client/dist/
+
+admin_build:
+  stage: build
+  image: node:20-alpine
+  script:
+    - cd vivugo-admin
+    - npm ci
+    - export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://localhost:8081/api/}"
+    - npm run build
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - vivugo-admin/dist/
+
+deploy_backend_railway:
+  stage: deploy
+  image: ghcr.io/railwayapp/cli:latest
+  needs:
+    - backend_build
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $RAILWAY_TOKEN'
+  environment:
+    name: production/backend
+    url: $RAILWAY_BACKEND_URL
+  script:
+    - test -n "$RAILWAY_TOKEN" || (echo "RAILWAY_TOKEN is required" && exit 1)
+    - test -n "$RAILWAY_BACKEND_SERVICE" || (echo "RAILWAY_BACKEND_SERVICE is required" && exit 1)
+    - echo "Deploying backend to Railway service $RAILWAY_BACKEND_SERVICE"
+    - |
+      status=0
+      railway up vivugo-backend --path-as-root --ci --verbose --service "$RAILWAY_BACKEND_SERVICE" > railway-deploy.log 2>&1 || status=$?
+      cat railway-deploy.log
+      if [ "$status" != "0" ]; then
+        echo "Railway deploy failed. Check these first:"
+        echo "1. RAILWAY_TOKEN must be a Railway Project Token from the same Railway project."
+        echo "2. The token must be created for the production environment."
+        echo "3. RAILWAY_BACKEND_SERVICE must match the Railway service name exactly."
+        exit "$status"
+      fi
+
+deploy_client_vercel:
+  stage: deploy
+  image: node:20-alpine
+  needs:
+    - client_build
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VERCEL_TOKEN && $VERCEL_ORG_ID && $VERCEL_CLIENT_PROJECT_ID && $VITE_API_BASE_URL'
+  environment:
+    name: production/client
+    url: $VITE_CLIENT_URL
+  script:
+    - mkdir -p vivugo-client/.vercel
+    - printf '{"projectId":"%s","orgId":"%s"}' "$VERCEL_CLIENT_PROJECT_ID" "$VERCEL_ORG_ID" > vivugo-client/.vercel/project.json
+    - cd vivugo-client
+    - npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+    - npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
+    - npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+deploy_admin_vercel:
+  stage: deploy
+  image: node:20-alpine
+  needs:
+    - admin_build
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VERCEL_TOKEN && $VERCEL_ORG_ID && $VERCEL_ADMIN_PROJECT_ID && $VITE_API_BASE_URL'
+  environment:
+    name: production/admin
+    url: $VITE_ADMIN_URL
+  script:
+    - mkdir -p vivugo-admin/.vercel
+    - printf '{"projectId":"%s","orgId":"%s"}' "$VERCEL_ADMIN_PROJECT_ID" "$VERCEL_ORG_ID" > vivugo-admin/.vercel/project.json
+    - cd vivugo-admin
+    - npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+    - npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
+    - npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"

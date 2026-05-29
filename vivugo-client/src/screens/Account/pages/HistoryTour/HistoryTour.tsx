@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FaCalendarAlt, FaUsers } from 'react-icons/fa'
 import { bookingApi } from '../../../../apis/booking.api'
-import { formatCurrency } from '../../../../utils/utils'
+import { formatCurrency, resolveAssetUrl } from '../../../../utils/utils'
 import { ReviewButton } from '../../../../components/ReviewButton/ReviewButton'
 import { Button } from '../../../../components/ui/button'
 
@@ -82,7 +82,7 @@ export default function HistoryTour() {
             <div key={booking.bookingID} className="overflow-hidden rounded-xl border md:flex">
               <div className="h-48 md:w-1/4">
                 <img
-                  src={booking.tourImageURL}
+                  src={resolveAssetUrl(booking.tourImageURL, 'https://placehold.co/400x300?text=Tour')}
                   alt={booking.tourTitle}
                   onError={(e) => (e.currentTarget.src = 'https://placehold.co/400x300?text=Tour')}
                   className="h-full w-full object-cover"

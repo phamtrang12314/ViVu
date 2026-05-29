@@ -32,3 +32,5 @@ spring.data.redis.repositories.enabled=false
 management.health.redis.enabled=false
 management.health.mail.enabled=false
 management.endpoint.health.show-details=always
+
+app.cors.allowed-origin-patterns=${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}

@@ -36,3 +36,6 @@ aws-env.local.ps1
 run-aws.cmd
 
 src/main/resources/application*.properties
+!src/main/resources/application.properties
+!src/main/resources/application.properties.example
+!src/main/resources/application-local.properties.example
