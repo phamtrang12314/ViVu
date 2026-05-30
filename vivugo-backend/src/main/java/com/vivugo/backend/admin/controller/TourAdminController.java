@@ -7,28 +7,20 @@ import com.vivugo.backend.admin.dto.response.tour.TourSimpleForParticipantsAdmin
 import com.vivugo.backend.admin.dto.response.tour.TourSimpleResponse;
 import com.vivugo.backend.admin.service.TourAdminService;
 import com.vivugo.backend.model.Tour;
-import com.vivugo.backend.model.enums.TourStatus;
-import com.vivugo.backend.repository.TourRepository;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
-import jakarta.persistence.criteria.Predicate;
 
 @RestController
 @RequestMapping("/api/admin/tours")
 public class TourAdminController {
 
     private final TourAdminService tourAdminService;
-    private final TourRepository tourRepository;
 
-    public TourAdminController(TourAdminService tourAdminService, TourRepository tourRepository) {
+    public TourAdminController(TourAdminService tourAdminService) {
         this.tourAdminService = tourAdminService;
-        this.tourRepository = tourRepository;
     }
 
     @GetMapping
@@ -86,6 +78,12 @@ public class TourAdminController {
     @PutMapping("/{id}/complete")
     public ResponseEntity<Void> complete(@PathVariable String id) {
         tourAdminService.completeTour(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        tourAdminService.cancelTour(id);
         return ResponseEntity.noContent().build();
     }
 

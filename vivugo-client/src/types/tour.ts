@@ -18,6 +18,7 @@ export interface Tour {
     discountPercentage: number;
     averageRating: number;
     reviewCount: number;
+    tourImages?: TourImageDto[];
 }
 
 export interface TourList {
@@ -123,8 +124,8 @@ export interface TourDetails {
     destinations: DestinationDto[];
     tourImages: TourImageDto[];
     itineraries: ItineraryDto[];
+    openDates?: string[];
     // Giả định thêm rating cho hiển thị
     averageRating: number;
     reviewCount: number;
 }
-

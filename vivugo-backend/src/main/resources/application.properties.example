@@ -34,3 +34,6 @@ management.health.mail.enabled=false
 management.endpoint.health.show-details=always
 
 app.cors.allowed-origin-patterns=${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
+app.asset-fallback-base-url=${ASSET_FALLBACK_BASE_URL:http://localhost:5173}
+sepay.api-token=${SEPAY_API_TOKEN:}
+sepay.account-number=${SEPAY_ACCOUNT_NUMBER:}

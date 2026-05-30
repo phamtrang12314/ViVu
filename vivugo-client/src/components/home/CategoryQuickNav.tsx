@@ -1,42 +1,40 @@
 import { Link } from 'react-router-dom'
-import {
-  FaUmbrellaBeach,
-  FaMountain,
-  FaLandmark,
-  FaHiking,
-  FaUtensils,
-  FaGem
-} from 'react-icons/fa'
 import AnimateSection from './AnimateSection'
 
-const categories = [
-  { id: 'beach', label: 'Biển', icon: FaUmbrellaBeach, search: 'biển', color: 'from-cyan-500 to-blue-600' },
-  { id: 'mountain', label: 'Núi', icon: FaMountain, search: 'núi', color: 'from-emerald-500 to-teal-600' },
-  { id: 'culture', label: 'Văn hóa', icon: FaLandmark, search: 'văn hóa', color: 'from-amber-500 to-orange-600' },
-  { id: 'adventure', label: 'Mạo hiểm', icon: FaHiking, search: 'mạo hiểm', color: 'from-orange-500 to-red-600' },
-  { id: 'food', label: 'Ẩm thực', icon: FaUtensils, search: 'ẩm thực', color: 'from-rose-500 to-pink-600' },
-  { id: 'luxury', label: 'Luxury', icon: FaGem, search: 'luxury', color: 'from-violet-500 to-purple-700' }
+type Category = {
+  id: string
+  label: string
+  search: string
+  emoji: string
+}
+
+const categories: Category[] = [
+  { id: 'beach', label: 'Biển', search: 'biển', emoji: '🏖️' },
+  { id: 'island', label: 'Đảo', search: 'đảo', emoji: '🏝️' },
+  { id: 'rural', label: 'Miệt vườn', search: 'miệt vườn', emoji: '🌾' },
+  { id: 'culture', label: 'Văn hóa', search: 'văn hóa', emoji: '🏛️' },
+  { id: 'explore', label: 'Khám phá', search: 'khám phá', emoji: '🌍' }
 ]
 
 export default function CategoryQuickNav() {
   return (
-    <AnimateSection className="relative z-30 -mt-8 pb-4">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 md:gap-4">
-          {categories.map((cat) => (
-            <Link
-              key={cat.id}
-              to={`/tours?search=${encodeURIComponent(cat.search)}`}
-              className="group flex flex-col items-center gap-2 p-4 md:p-5 bg-white rounded-[var(--vivugo-radius)] shadow-[var(--vivugo-shadow)] border border-gray-100 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.12)] transition-all duration-300"
-            >
-              <div
-                className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br ${cat.color} text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}
+    <AnimateSection className="relative z-30 -mt-12 pb-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 p-3 shadow-sm">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                to={`/tours?search=${encodeURIComponent(category.search)}`}
+                className="group flex flex-col items-center gap-1.5 rounded-xl p-3 transition hover:bg-white/80"
               >
-                <cat.icon size={22} />
-              </div>
-              <span className="text-xs md:text-sm font-bold text-gray-800">{cat.label}</span>
-            </Link>
-          ))}
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white text-3xl shadow-sm transition group-hover:scale-105">
+                  {category.emoji}
+                </span>
+                <span className="text-xs font-bold text-slate-700">{category.label}</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </AnimateSection>

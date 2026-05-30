@@ -1,9 +1,0 @@
-.git
-.mvn/wrapper/maven-wrapper.jar
-target
-logs
-*.log
-.env
-.env.*
-*.local
-src/main/resources/application-local.properties

@@ -1,294 +1,204 @@
-// frontend-demo/src/components/TourBookingSection/TourBookingSection.tsx
-
-import { useEffect, useState, useContext } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { Calendar, Users, DollarSign, Heart } from "lucide-react";
-import type { TourDetails } from "../../types/tour";
-import { formatCurrency } from "../../utils/utils";
-import Button from "../../components/Button";
-import BookingModal from "../BookingModal";
-
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
-import { AppContext } from "../../contexts/app.context";
-import { favoriteApi } from "../../apis/favorite.api";
-import type { AxiosError } from "axios";
+import { useContext, useMemo, useState } from 'react'
+import { Calendar, Minus, Phone, Plus, Users } from 'lucide-react'
+import { toast } from 'react-toastify'
+import type { TourDetails } from '../../types/tour'
+import { formatCurrency } from '../../utils/utils'
+import Button from '../Button'
+import BookingModal from '../BookingModal'
+import { AppContext } from '../../contexts/app.context'
 
 interface Props {
-    tour: TourDetails;
+  tour: TourDetails
 }
 
-interface BookingFormData {
-    adults: number;
-    children: number;
-    totalPrice: number;
+const DATE_COUNT = 6
+
+const buildDepartureDates = (startDate: string, openDates?: string[]) => {
+  if (openDates && openDates.length > 0) {
+    const parsed = openDates
+      .map((value) => new Date(value))
+      .filter((date) => !Number.isNaN(date.getTime()))
+      .sort((a, b) => a.getTime() - b.getTime())
+    if (parsed.length > 0) {
+      return parsed
+    }
+  }
+
+  const start = new Date(startDate)
+  if (Number.isNaN(start.getTime())) return [startDate]
+  return Array.from({ length: DATE_COUNT }, (_, index) => {
+    const date = new Date(start)
+    date.setDate(date.getDate() + index * 14)
+    return date
+  })
+}
+
+const formatDateLabel = (date: Date | string) => {
+  if (typeof date === 'string') return date
+  return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
 export default function TourBookingSection({ tour }: Props) {
-    const { isAuthenticated, favoriteIds, addFavoriteId, removeFavoriteId } =
-        useContext(AppContext);
-    const queryClient = useQueryClient();
+  const { isAuthenticated } = useContext(AppContext)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [adults, setAdults] = useState(1)
+  const [children, setChildren] = useState(0)
+  const [selectedDateIndex, setSelectedDateIndex] = useState(0)
 
-    const isLiked = favoriteIds.has(tour.tourID);
+  const maxParticipants = Math.max(tour.maxParticipants || 1, 1)
+  const remainingSlots = Math.max(maxParticipants - (adults + children), 0)
+  const departureDates = useMemo(
+    () => buildDepartureDates(tour.startDate, tour.openDates),
+    [tour.startDate, tour.openDates]
+  )
+  const totalPrice = adults * (tour.finalPriceAdult || 0) + children * (tour.finalPriceChild || 0)
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
+  const increaseAdults = () => {
+    setAdults((current) => (current + children >= maxParticipants ? current : current + 1))
+  }
 
-    const {
-        control,
-        watch,
-        setValue,
-        formState: { errors },
-    } = useForm<BookingFormData>({
-        defaultValues: {
-            adults: 1,
-            children: 0,
-            totalPrice: tour.finalPriceAdult,
-        },
-    });
+  const decreaseAdults = () => {
+    setAdults((current) => Math.max(1, current - 1))
+  }
 
-    const adults = watch("adults");
-    const children = watch("children");
-    const totalPrice = watch("totalPrice");
+  const increaseChildren = () => {
+    setChildren((current) => (adults + current >= maxParticipants ? current : current + 1))
+  }
 
-    useEffect(() => {
-        const adultPrice = tour.finalPriceAdult || 0;
-        const childPrice = tour.finalPriceChild || 0;
-        const total = adults * adultPrice + children * childPrice;
-        setValue("totalPrice", total);
-    }, [adults, children, tour.finalPriceAdult, tour.finalPriceChild, setValue]);
+  const decreaseChildren = () => {
+    setChildren((current) => Math.max(0, current - 1))
+  }
 
-    // --- PHẦN SỬA ĐỔI CHÍNH Ở ĐÂY ---
-    const handleOpenBookingModal = () => {
-        // 1. Kiểm tra đăng nhập trước tiên
-        if (!isAuthenticated) {
-            toast.info("Bạn vui lòng đăng nhập để đặt tour nhé!");
-            return;
-        }
+  const handleOpenBookingModal = () => {
+    if (!isAuthenticated) {
+      toast.info('Bạn vui lòng đăng nhập để đặt tour nhé!')
+      return
+    }
+    if (adults < 1) {
+      toast.error('Cần ít nhất 1 người lớn để đặt tour.')
+      return
+    }
+    setIsModalOpen(true)
+  }
 
-        // 2. Sau đó mới kiểm tra dữ liệu form
-        if (errors.adults || errors.children) {
-            return;
-        }
+  const selectedDate = departureDates[selectedDateIndex] || departureDates[0] || tour.startDate
 
-        setIsModalOpen(true);
-    };
-    // --------------------------------
+  return (
+    <div id="booking-panel" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="bg-[#0f3a8a] p-5 text-white">
+        <p className="text-xs font-bold uppercase tracking-wide text-blue-100">Giá từ</p>
+        <p className="mt-1 text-4xl font-black leading-none">{formatCurrency(tour.finalPriceAdult || 0)}</p>
+        <p className="mt-3 text-sm text-blue-100">Mã tour: {tour.tourID}</p>
+      </div>
 
-    const addFavoriteMutation = useMutation({
-        mutationFn: favoriteApi.addFavorite,
-    });
-
-    const removeFavoriteMutation = useMutation({
-        mutationFn: favoriteApi.removeFavorite,
-    });
-
-    const handleFavorite = () => {
-        if (!isAuthenticated) {
-            toast.info("Bạn cần đăng nhập để thực hiện chức năng này");
-            return;
-        }
-
-        if (isLiked) {
-            removeFavoriteMutation.mutate(tour.tourID, {
-                onSuccess: () => {
-                    removeFavoriteId(tour.tourID);
-                    toast.success("Đã xóa khỏi danh sách yêu thích!");
-                    queryClient.invalidateQueries({ queryKey: ["favoriteIds"] });
-                },
-                onError: () => {
-                    toast.error("Có lỗi xảy ra, vui lòng thử lại.");
-                },
-            });
-        } else {
-            addFavoriteMutation.mutate(
-                { tourId: tour.tourID },
-                {
-                    onSuccess: () => {
-                        addFavoriteId(tour.tourID);
-                        toast.success("Đã thêm tour vào danh sách yêu thích!");
-                        queryClient.invalidateQueries({ queryKey: ["favoriteIds"] });
-                    },
-                    onError: (error: Error | AxiosError) => {
-                        const axiosError = error as AxiosError<{ message: string }>;
-                        if (axiosError.response?.status === 409) {
-                            addFavoriteId(tour.tourID);
-                            toast.info("Bạn đã yêu thích tour này rồi.");
-                        } else {
-                            toast.error("Có lỗi xảy ra, vui lòng thử lại sau.");
-                        }
-                    },
-                }
-            );
-        }
-    };
-
-    const maxParticipants = tour.maxParticipants || 20;
-    const isProcessing = addFavoriteMutation.isPending || removeFavoriteMutation.isPending;
-
-    return (
-        <div className="bg-white p-6 rounded-lg shadow-xl sticky top-24">
-            <h2 className="text-2xl font-semibold mb-5 text-gray-800">Đặt tour ngay</h2>
-
-            <div className="mb-4 space-y-2">
-                <div className="flex justify-between items-center">
-                    <span className="text-gray-600 flex items-center">
-                        <Users size={18} className="mr-2 text-blue-500" />
-                        Giá người lớn:
-                    </span>
-                    <span className="font-semibold text-lg text-gray-900">
-                        {formatCurrency(tour.finalPriceAdult)}
-                    </span>
-                </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-gray-600 flex items-center">
-                        <Users size={16} className="mr-2 text-blue-500" />
-                        Giá trẻ em:
-                    </span>
-                    <span className="font-semibold text-lg text-gray-900">
-                        {formatCurrency(tour.finalPriceChild)}
-                    </span>
-                </div>
-                {tour.priceAdult > tour.finalPriceAdult && (
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-500">Giá gốc (người lớn):</span>
-                        <span className="text-gray-500 line-through">
-                            {formatCurrency(tour.priceAdult)}
-                        </span>
-                    </div>
-                )}
-            </div>
-
-            <hr className="my-4" />
-
-            <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label
-                        htmlFor="adults"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                        Người lớn
-                    </label>
-                    <Controller
-                        name="adults"
-                        control={control}
-                        rules={{
-                            min: { value: 1, message: "Phải có ít nhất 1 người lớn" },
-                            validate: (value) =>
-                                value + children <= maxParticipants ||
-                                `Tổng số khách không vượt quá ${maxParticipants}`,
-                        }}
-                        render={({ field }) => (
-                            <input
-                                type="number"
-                                id="adults"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                min="1"
-                                max={maxParticipants}
-                            />
-                        )}
-                    />
-                </div>
-                <div>
-                    <label
-                        htmlFor="children"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                        Trẻ em
-                    </label>
-                    <Controller
-                        name="children"
-                        control={control}
-                        rules={{
-                            min: { value: 0, message: "Số lượng không thể âm" },
-                            validate: (value) =>
-                                adults + value <= maxParticipants ||
-                                `Tổng số khách không vượt quá ${maxParticipants}`,
-                        }}
-                        render={({ field }) => (
-                            <input
-                                type="number"
-                                id="children"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                min="0"
-                                max={maxParticipants - adults}
-                            />
-                        )}
-                    />
-                </div>
-            </div>
-
-            {(errors.adults || errors.children) && (
-                <div className="mb-4 text-sm text-red-600">
-                    {errors.adults?.message || errors.children?.message}
-                </div>
-            )}
-
-            <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ngày khởi hành
-                </label>
-                <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md flex items-center text-gray-700">
-                    <Calendar size={18} className="mr-2 text-gray-500" />
-                    {tour.startDate} (còn {tour.maxParticipants - (adults + children)} chỗ)
-                </div>
-            </div>
-
-            <div className="flex justify-between items-center mb-5 p-4 bg-blue-50 rounded-lg">
-                <span className="text-lg font-semibold text-gray-700 flex items-center">
-                    <DollarSign size={20} className="mr-2" />
-                    Tổng cộng:
-                </span>
-                <span className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(totalPrice)}
-                </span>
-            </div>
-
-            <div className="space-y-3">
-                <Button
-                    type="button"
-                    className="w-full !rounded-2xl !py-4 !text-xl !font-black uppercase tracking-wide !text-white !bg-gradient-to-r !from-orange-500 !to-rose-500 hover:!from-orange-600 hover:!to-rose-600 hover:!-translate-y-1 hover:!scale-[1.02] !shadow-[0_16px_34px_rgba(249,115,22,0.34)] hover:!shadow-[0_22px_44px_rgba(249,115,22,0.48)]"
-                    disabled={!!errors.adults || !!errors.children}
-                    onClick={handleOpenBookingModal}
-                >
-                    Đặt Tour
-                </Button>
-
-                <Button
-                    type="button"
-                    variant="outline"
-                    className={`w-full text-lg py-3 transition-colors duration-300 ${
-                        isLiked
-                            ? "text-red-500 border-red-200 hover:bg-red-50"
-                            : "text-gray-600 border-gray-300 hover:bg-gray-50"
-                    }`}
-                    onClick={handleFavorite}
-                    disabled={isProcessing}
-                >
-                    <Heart
-                        size={20}
-                        className={`mr-2 transition-colors duration-300 ${
-                            isLiked ? "fill-current text-red-500" : ""
-                        }`}
-                    />
-                    {isLiked ? "Đã Yêu Thích" : "Yêu Thích"}
-                </Button>
-            </div>
-
-            <BookingModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                tour={tour}
-                bookingDetails={{
-                    adults: adults,
-                    children: children,
-                    totalPrice: totalPrice,
-                }}
-            />
+      <div className="space-y-4 p-5">
+        <div>
+          <p className="text-xs font-bold uppercase text-slate-500">Ngày khởi hành</p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {departureDates.map((date, index) => (
+              <button
+                type="button"
+                key={`${String(date)}-${index}`}
+                onClick={() => setSelectedDateIndex(index)}
+                className={`rounded-lg border px-2 py-1.5 text-xs font-bold transition ${
+                  index === selectedDateIndex
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
+                }`}
+              >
+                {formatDateLabel(date)}
+              </button>
+            ))}
+          </div>
         </div>
-    );
-}
 
+        <div>
+          <p className="text-xs font-bold uppercase text-slate-500">Số người</p>
+          <div className="mt-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Người lớn</p>
+                <p className="text-xs text-slate-500">{formatCurrency(tour.finalPriceAdult || 0)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={decreaseAdults} className="rounded-full border border-slate-200 p-1 hover:bg-slate-50">
+                  <Minus size={14} />
+                </button>
+                <span className="w-6 text-center text-sm font-bold">{adults}</span>
+                <button type="button" onClick={increaseAdults} className="rounded-full border border-slate-200 p-1 hover:bg-slate-50">
+                  <Plus size={14} />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Trẻ em</p>
+                <p className="text-xs text-slate-500">{formatCurrency(tour.finalPriceChild || 0)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={decreaseChildren} className="rounded-full border border-slate-200 p-1 hover:bg-slate-50">
+                  <Minus size={14} />
+                </button>
+                <span className="w-6 text-center text-sm font-bold">{children}</span>
+                <button type="button" onClick={increaseChildren} className="rounded-full border border-slate-200 p-1 hover:bg-slate-50">
+                  <Plus size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          <div className="mb-1 flex items-center gap-2">
+            <Calendar size={16} className="text-slate-500" />
+            <span>{typeof selectedDate === 'string' ? selectedDate : selectedDate.toLocaleDateString('vi-VN')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Users size={16} className="text-slate-500" />
+            <span>Còn {remainingSlots} chỗ</span>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 pt-3">
+          <div className="mb-2 flex items-center justify-between text-sm text-slate-600">
+            <span>
+              Người lớn x {adults} + Trẻ em x {children}
+            </span>
+            <span className="font-semibold text-slate-800">{formatCurrency(totalPrice)}</span>
+          </div>
+          <div className="flex items-center justify-between text-xl font-black text-slate-900">
+            <span>Tổng cộng</span>
+            <span className="text-blue-700">{formatCurrency(totalPrice)}</span>
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          className="w-full !rounded-xl !bg-blue-600 !py-3 !font-black !text-white hover:!bg-blue-700"
+          onClick={handleOpenBookingModal}
+        >
+          Đặt tour ngay
+        </Button>
+        <Button type="button" variant="outline" className="w-full !rounded-xl !border-blue-200 !py-3 !font-bold !text-blue-600">
+          Tư vấn miễn phí
+        </Button>
+
+        <p className="flex items-center justify-center gap-2 text-xs text-slate-500">
+          <Phone size={14} />
+          Hotline: 1900 1808
+        </p>
+      </div>
+
+      <BookingModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        tour={tour}
+        bookingDetails={{
+          adults,
+          children,
+          totalPrice
+        }}
+      />
+    </div>
+  )
+}

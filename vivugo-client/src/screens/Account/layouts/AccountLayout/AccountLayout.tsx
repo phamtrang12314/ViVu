@@ -1,15 +1,22 @@
 import { useContext, useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { AppContext } from '../../../../contexts/app.context'
+import { getProfile } from '../../../../apis/auth.api'
 import { FaUser, FaHistory, FaHeart, FaKey, FaSignOutAlt } from 'react-icons/fa'
 import { toast } from 'react-toastify'
-import userImage from '../../../../assets/user.png'
+import { resolveAssetUrl } from '../../../../utils/utils'
 
 export default function AccountLayout() {
-  const { profile, setIsAuthenticated, setProfile } = useContext(AppContext)
+  const { setIsAuthenticated, setProfile } = useContext(AppContext)
   const location = useLocation()
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
+
+  const { data: userData } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => getProfile()
+  })
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -31,38 +38,34 @@ export default function AccountLayout() {
     { path: '/account/password', label: 'Đổi mật khẩu', icon: FaKey }
   ]
 
-  return (
-    <div className="bg-[#f8fafc] min-h-screen pb-20 pt-28 relative overflow-hidden">
-      {/* Background Abstract Shapes (Premium Touch) */}
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-400/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-70 animate-blob pointer-events-none"></div>
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-70 animate-blob animation-delay-2000 pointer-events-none"></div>
+  const user = userData?.data
+  const displayName = user?.name?.trim() || 'Khách hàng'
+  const avatarSrc = resolveAssetUrl(user?.avatarURL, '/uifaces-human-avatar.jpg')
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* SIDEBAR (Glassmorphism) */}
-          <div className="lg:w-1/4 w-full shrink-0">
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-[#f8fafc] pb-20 pt-28">
+      <div className="pointer-events-none absolute left-0 top-0 h-[500px] w-[500px] animate-blob rounded-full bg-blue-400/20 blur-[100px]" />
+      <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] animate-blob rounded-full bg-purple-400/20 blur-[100px] animation-delay-2000" />
+
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-8 lg:flex-row">
+          <div className="w-full shrink-0 lg:w-1/4">
             <div
-              className={`bg-white/80 backdrop-blur-xl rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 transition-all duration-300 ${scrolled ? 'lg:sticky lg:top-28' : ''}`}
+              className={`rounded-[2rem] border border-white/60 bg-white/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ${
+                scrolled ? 'lg:sticky lg:top-28' : ''
+              }`}
             >
-              {/* User Info */}
-              <div className="text-center mb-8 pb-8 border-b border-gray-100">
-                <div className="w-24 h-24 mx-auto rounded-full p-1 bg-gradient-to-tr from-blue-500 to-indigo-500 mb-4 shadow-xl">
-                  <img
-                    src={userImage} // Replace with profile?.avatar if available
-                    alt="avatar"
-                    className="w-full h-full object-cover rounded-full border-4 border-white bg-white"
-                  />
+              <div className="mb-8 border-b border-gray-100 pb-8 text-center">
+                <div className="mx-auto mb-4 h-24 w-24 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 p-1 shadow-xl">
+                  <img src={avatarSrc} alt={displayName} className="h-full w-full rounded-full border-4 border-white bg-white object-cover" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">
-                  {profile?.userID || 'Người dùng'}
-                </h3>
-                <p className="text-sm text-gray-500 truncate px-2 font-medium">{profile?.email}</p>
-                <span className="mt-3 inline-block px-3 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-full uppercase tracking-wider">
+                <h3 className="mb-1 text-xl font-bold text-gray-900">{displayName}</h3>
+                <p className="truncate px-2 text-sm font-medium text-gray-500">{user?.email || 'Đang cập nhật'}</p>
+                <span className="mt-3 inline-block rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-600">
                   Thành viên ViVuGo
                 </span>
               </div>
 
-              {/* Navigation */}
               <nav className="space-y-2">
                 {navLinks.map((item) => {
                   const isActive = location.pathname.includes(item.path)
@@ -70,9 +73,9 @@ export default function AccountLayout() {
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 font-bold text-sm ${
+                      className={`flex items-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-bold transition-all duration-300 ${
                         isActive
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 transform scale-[1.02]'
+                          ? 'scale-[1.02] bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
                           : 'text-gray-500 hover:bg-blue-50 hover:text-blue-600'
                       }`}
                     >
@@ -81,10 +84,10 @@ export default function AccountLayout() {
                     </Link>
                   )
                 })}
-                <div className="border-t border-gray-100 my-4"></div>
+                <div className="my-4 border-t border-gray-100" />
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 font-bold text-sm text-red-500 hover:bg-red-50 hover:text-red-600"
+                  className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-bold text-red-500 transition-all duration-300 hover:bg-red-50 hover:text-red-600"
                 >
                   <FaSignOutAlt size={18} />
                   Đăng xuất
@@ -93,9 +96,8 @@ export default function AccountLayout() {
             </div>
           </div>
 
-          {/* MAIN CONTENT (Outlet) */}
-          <div className="lg:w-3/4 w-full">
-            <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 min-h-[600px] p-8 md:p-12">
+          <div className="w-full lg:w-3/4">
+            <div className="min-h-[600px] rounded-[2.5rem] border border-white/60 bg-white/90 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl md:p-12">
               <Outlet />
             </div>
           </div>
@@ -104,4 +106,3 @@ export default function AccountLayout() {
     </div>
   )
 }
-

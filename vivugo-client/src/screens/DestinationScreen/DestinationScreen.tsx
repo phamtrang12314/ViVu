@@ -10,6 +10,16 @@ const resolveImage = (url?: string) => {
   return resolveAssetUrl(url)
 }
 
+const sizePattern = [
+  'md:col-span-4 md:row-span-3',
+  'md:col-span-2 md:row-span-3',
+  'md:col-span-2 md:row-span-2',
+  'md:col-span-2 md:row-span-3',
+  'md:col-span-2 md:row-span-2',
+  'md:col-span-3 md:row-span-2',
+  'md:col-span-3 md:row-span-2'
+]
+
 export default function DestinationScreen() {
   const [activeRegion, setActiveRegion] = useState('all')
   const [search, setSearch] = useState('')
@@ -43,32 +53,35 @@ export default function DestinationScreen() {
 
   return (
     <main className="min-h-screen bg-slate-50 pb-20">
-      <section className="relative min-h-[420px] overflow-hidden pt-28">
-        <img src={resolveImage(heroImage)} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/68 via-black/36 to-slate-50" />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-white">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/16 px-4 py-2 text-sm font-bold backdrop-blur-xl">
-              <Sparkles size={16} />
-              Khám phá Việt Nam
-            </span>
-            <h1 className="mt-6 text-4xl font-black leading-tight md:text-6xl">
-              Điểm đến nổi bật cho chuyến đi tiếp theo
-            </h1>
-            <p className="mt-4 max-w-2xl text-base font-medium text-white/84 md:text-lg">
-              Lọc theo vùng miền, xem số tour đang có và đi thẳng tới danh sách tour phù hợp.
-            </p>
-          </div>
+      <section className="relative overflow-hidden pt-28">
+        <div className="relative min-h-[380px]">
+          <img src={resolveImage(heroImage)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/68 via-black/42 to-slate-50" />
 
-          <div className="mt-10 max-w-4xl rounded-[28px] border border-white/40 bg-white/22 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_24px_60px_rgba(15,23,42,0.2)] backdrop-blur-2xl">
-            <div className="flex flex-col gap-3 rounded-[22px] border border-white/70 bg-white/48 p-3 backdrop-blur-xl md:flex-row">
+          <div className="relative z-10 mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+            <div className="max-w-3xl text-white">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/16 px-4 py-2 text-sm font-bold backdrop-blur-xl">
+                <Sparkles size={16} />
+                Khám phá Việt Nam
+              </span>
+              <h1 className="mt-6 text-4xl font-black leading-tight md:text-6xl">Điểm đến nổi bật cho chuyến đi tiếp theo</h1>
+              <p className="mt-4 max-w-2xl text-base font-medium text-white/84 md:text-lg">
+                Lọc theo vùng miền, xem số tour đang có và đi thẳng tới danh sách tour phù hợp.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-20 -mt-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="rounded-[28px] border border-white/70 bg-white/78 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <div className="flex flex-col gap-3 rounded-[22px] border border-slate-100 bg-white p-3 md:flex-row">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Tìm Hà Nội, Đà Nẵng, Sa Pa..."
-                  className="h-12 w-full rounded-2xl border border-white/70 bg-white/48 pl-11 pr-4 text-sm font-semibold text-slate-800 outline-none backdrop-blur-xl transition focus:bg-white/70 focus:ring-2 focus:ring-blue-500/40"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-semibold text-slate-800 outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-500/40"
                 />
               </div>
               <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0">
@@ -79,8 +92,8 @@ export default function DestinationScreen() {
                     onClick={() => setActiveRegion(String(region))}
                     className={`h-12 shrink-0 rounded-2xl border px-5 text-sm font-bold transition ${
                       activeRegion === region
-                        ? 'border-white bg-white/72 text-blue-700 shadow-sm'
-                        : 'border-white/60 bg-white/28 text-slate-600 hover:bg-white/55'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     {region === 'all' ? 'Tất cả' : region}
@@ -92,7 +105,7 @@ export default function DestinationScreen() {
         </div>
       </section>
 
-      <section className="mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="mx-auto mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
         {isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center">
             <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-blue-600" />
@@ -103,17 +116,15 @@ export default function DestinationScreen() {
             <p className="mt-2 text-slate-500">Hãy thử đổi vùng miền hoặc từ khóa tìm kiếm.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 auto-rows-auto md:grid-cols-6 md:auto-rows-[130px]">
             {filteredDestinations.map((destination, index) => {
               const image = resolveImage(destination.imageURLs?.[0])
-              const featured = index === 0
+              const patternClass = sizePattern[index % sizePattern.length]
               return (
                 <Link
                   key={destination.destinationID}
                   to={`/tours?destination_id=${destination.destinationID}`}
-                  className={`group relative min-h-[320px] overflow-hidden rounded-[28px] border border-white bg-white/70 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(15,23,42,0.14)] ${
-                    featured ? 'md:col-span-2' : ''
-                  }`}
+                  className={`group relative min-h-[300px] overflow-hidden rounded-[28px] border border-white bg-white/70 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(15,23,42,0.14)] md:min-h-0 ${patternClass}`}
                 >
                   <img
                     src={image}
@@ -146,4 +157,3 @@ export default function DestinationScreen() {
     </main>
   )
 }
-

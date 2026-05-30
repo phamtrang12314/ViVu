@@ -77,6 +77,11 @@ export interface TourDetailAdmin {
   }[]
 
   itineraries?: ItineraryAdmin[]
+  tourImages?: {
+    url: string
+    caption?: string | null
+  }[]
+  openDates?: string[]
 }
 
 export interface SimpleTour {

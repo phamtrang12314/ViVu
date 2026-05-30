@@ -4,7 +4,9 @@ import com.vivugo.backend.dto.BookingHistoryResponse;
 import com.vivugo.backend.dto.BookingRequest;
 import com.vivugo.backend.model.Account;
 import com.vivugo.backend.model.Booking;
+import com.vivugo.backend.model.enums.PaymentStatus;
 import com.vivugo.backend.service.BookingService;
+import com.vivugo.backend.service.SePayTransactionSyncService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,9 +21,11 @@ import java.util.Map;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final SePayTransactionSyncService sePayTransactionSyncService;
 
-    public BookingController(BookingService bookingService) {
+    public BookingController(BookingService bookingService, SePayTransactionSyncService sePayTransactionSyncService) {
         this.bookingService = bookingService;
+        this.sePayTransactionSyncService = sePayTransactionSyncService;
     }
 
     // API Tạo Booking: Trả về bookingID để frontend chuyển trang
@@ -53,6 +57,10 @@ public class BookingController {
     public ResponseEntity<?> getBookingById(@PathVariable String id) {
         try {
             Booking booking = bookingService.getBookingById(id);
+            if (bookingService.resolvePaymentStatus(booking) != PaymentStatus.SUCCESS
+                    && sePayTransactionSyncService.reconcileBooking(booking)) {
+                booking = bookingService.getBookingById(id);
+            }
 
             // Tạo response object thủ công để tránh lỗi vòng lặp (Infinite Recursion)
             // hoặc lỗi Lazy Loading của Hibernate khi trả về JSON
