@@ -105,6 +105,7 @@ public class TourService {
                 // (THÊM MỚI) Fetch các liên kết khác
                 root.fetch("tourImages", JoinType.LEFT);
                 root.fetch("itineraries", JoinType.LEFT);
+                root.fetch("openDates", JoinType.LEFT);
 
 
                 // Rất quan trọng: Tránh trùng lặp do join

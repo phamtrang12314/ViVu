@@ -7,12 +7,14 @@ import com.vivugo.backend.model.*;
 import com.vivugo.backend.service.EmailService.PaymentSuccessEmailData;
 import com.vivugo.backend.model.enums.BookingStatus;
 import com.vivugo.backend.model.enums.PaymentStatus;
+import com.vivugo.backend.model.enums.RefundStatus;
 import com.vivugo.backend.repository.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -24,7 +26,7 @@ import java.util.stream.Collectors;
 @Service
 public class BookingService {
 
-    private static final long PAYMENT_TIMEOUT_MINUTES = 15;
+    private static final long PAYMENT_TIMEOUT_MINUTES = 30;
 
     private final TourRepository tourRepository;
     private final BookingRepository bookingRepository;
@@ -233,32 +235,123 @@ public class BookingService {
                 .orElse(PaymentStatus.PENDING);
     }
 
+    public long getPaymentSecondsRemaining(Booking booking) {
+        if (booking == null || resolvePaymentStatus(booking) == PaymentStatus.SUCCESS) {
+            return 0;
+        }
+
+        if (booking.getBookingDate() == null) {
+            return PAYMENT_TIMEOUT_MINUTES * 60;
+        }
+
+        LocalDateTime expiresAt = booking.getBookingDate().plusMinutes(PAYMENT_TIMEOUT_MINUTES);
+        long remaining = Duration.between(LocalDateTime.now(), expiresAt).getSeconds();
+        return Math.max(0, remaining);
+    }
+
+    public int calculateRefundPercent(Booking booking) {
+        if (booking == null || resolvePaymentStatus(booking) != PaymentStatus.SUCCESS) {
+            return 0;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime paidAt = latestSuccessfulPaymentDate(booking);
+        if (paidAt != null) {
+            long hoursAfterPayment = Duration.between(paidAt, now).toHours();
+            if (hoursAfterPayment < 1) {
+                return 100;
+            }
+            if (hoursAfterPayment < 24) {
+                return 90;
+            }
+        }
+
+        if (booking.getTour() == null || booking.getTour().getStartDate() == null) {
+            return 70;
+        }
+
+        long hoursBeforeDeparture = Duration.between(now, booking.getTour().getStartDate().atStartOfDay()).toHours();
+        if (hoursBeforeDeparture < 4) {
+            return 0;
+        }
+        if (hoursBeforeDeparture < 12) {
+            return 20;
+        }
+        if (hoursBeforeDeparture < 24) {
+            return 50;
+        }
+
+        return 70;
+    }
+
+    private LocalDateTime latestSuccessfulPaymentDate(Booking booking) {
+        if (booking == null || booking.getInvoice() == null
+                || booking.getInvoice().getPayments() == null
+                || booking.getInvoice().getPayments().isEmpty()) {
+            return null;
+        }
+
+        return booking.getInvoice().getPayments().stream()
+                .filter(payment -> payment.getStatus() == PaymentStatus.SUCCESS)
+                .map(Payment::getPaymentDate)
+                .filter(date -> date != null)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+    }
+
     @Transactional
     public void requestCancelBooking(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
-        // Kiểm tra logic: Chỉ cho hủy nếu tour chưa diễn ra hoặc logic nghiệp vụ của bạn
+        if (booking.getStatus() == BookingStatus.CANCELED) {
+            return;
+        }
+
+        PaymentStatus paymentStatus = resolvePaymentStatus(booking);
+        if (paymentStatus != PaymentStatus.SUCCESS) {
+            booking.setStatus(BookingStatus.CANCELED);
+            booking.setRefundStatus(null);
+            booking.setRefundedAt(null);
+            bookingRepository.save(booking);
+            return;
+        }
+
+        int refundPercent = calculateRefundPercent(booking);
+        if (refundPercent <= 0) {
+            throw new IllegalStateException("Không thể hủy tour trong vòng 4 giờ trước giờ khởi hành");
+        }
+
         if (booking.getStatus() == BookingStatus.PROCESSING || booking.getStatus() == BookingStatus.CONFIRMED) {
             booking.setStatus(BookingStatus.CANCELLATION_REQUESTED);
+            booking.setRefundStatus(RefundStatus.PENDING);
             bookingRepository.save(booking);
-        } else {
-            throw new IllegalStateException("Không thể yêu cầu hủy tour này");
+            return;
         }
+
+        throw new IllegalStateException("Không thể yêu cầu hủy tour này");
     }
 
     @Scheduled(fixedRate = 60000) // Chạy mỗi 60 giây (1 phút)
     @Transactional // Đảm bảo tính toàn vẹn dữ liệu khi xóa
     public void deleteExpiredBookings() {
-        // Mốc thời gian là 3 phút trước so với hiện tại
         LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(PAYMENT_TIMEOUT_MINUTES);
-
-        // Tìm các booking trạng thái PENDING (chưa thanh toán) và được tạo trước mốc 3 phút
         List<Booking> expiredBookings = bookingRepository.findByStatusAndBookingDateBefore(BookingStatus.PROCESSING, cutoffTime);
 
         if (!expiredBookings.isEmpty()) {
-            bookingRepository.deleteAll(expiredBookings);
-            System.out.println("Đã xóa " + expiredBookings.size() + " booking hết hạn thanh toán.");
+            List<Booking> unpaidExpiredBookings = expiredBookings.stream()
+                    .filter(booking -> resolvePaymentStatus(booking) != PaymentStatus.SUCCESS)
+                    .peek(booking -> {
+                        booking.setStatus(BookingStatus.CANCELED);
+                        booking.setRefundStatus(null);
+                        booking.setRefundedAt(null);
+                    })
+                    .collect(Collectors.toList());
+
+            if (!unpaidExpiredBookings.isEmpty()) {
+                bookingRepository.saveAll(unpaidExpiredBookings);
+                System.out.println("Auto-canceled " + unpaidExpiredBookings.size() + " unpaid bookings after payment timeout.");
+            }
         }
     }
 }

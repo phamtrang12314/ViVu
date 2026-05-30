@@ -1,13 +1,29 @@
 package com.vivugo.backend.controller;
 
-import com.vivugo.backend.dto.*;
-import com.vivugo.backend.model.Account; // (2) THÊM IMPORT
+import com.vivugo.backend.dto.ChangePasswordRequest;
+import com.vivugo.backend.dto.LoginRequest;
+import com.vivugo.backend.dto.LoginResponse;
+import com.vivugo.backend.dto.OtpRequest;
+import com.vivugo.backend.dto.RegisterRequest;
+import com.vivugo.backend.dto.ResetPasswordRequest;
+import com.vivugo.backend.dto.UserProfileResponse;
+import com.vivugo.backend.dto.UserUpdateRequest;
+import com.vivugo.backend.model.Account;
 import com.vivugo.backend.service.AuthService;
 import com.vivugo.backend.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal; // (3) THÊM IMPORT
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -24,12 +40,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
         LoginResponse response = authService.login(loginRequest);
-
         if (response.isSuccess()) {
             return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
     @PostMapping("/admin/login")
@@ -56,12 +70,10 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<LoginResponse> register(@RequestBody RegisterRequest registerRequest) {
         LoginResponse response = authService.register(registerRequest);
-
         if (response.isSuccess()) {
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } else {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         }
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @PostMapping("/forgot-password/request-otp")
@@ -86,18 +98,11 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserProfileResponse> getMyProfile(
-            @AuthenticationPrincipal Account currentUser
-    ) {
-
-
+    public ResponseEntity<UserProfileResponse> getMyProfile(@AuthenticationPrincipal Account currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-
-        // Dùng DTO mới của chúng ta để tạo response
-        UserProfileResponse response = new UserProfileResponse(currentUser);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new UserProfileResponse(currentUser));
     }
 
     @PutMapping("/me")
@@ -108,9 +113,26 @@ public class AuthController {
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-
         UserProfileResponse updatedProfile = userService.updateUserProfile(request, currentUser);
         return ResponseEntity.ok(updatedProfile);
+    }
+
+    @PostMapping("/me/avatar")
+    public ResponseEntity<?> uploadMyAvatar(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal Account currentUser
+    ) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            UserProfileResponse updatedProfile = userService.uploadAvatar(file, currentUser);
+            return ResponseEntity.ok(updatedProfile);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Không thể lưu ảnh đại diện.");
+        }
     }
 
     @PutMapping("/password")
@@ -121,24 +143,18 @@ public class AuthController {
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-
         try {
             authService.changePassword(request, currentUser);
             return ResponseEntity.ok("Đổi mật khẩu thành công.");
         } catch (IllegalArgumentException e) {
-            // Lỗi từ AuthService (mật khẩu cũ không chính xác)
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            // Các lỗi khác
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Đã xảy ra lỗi server.");
         }
     }
 
     @PostMapping("/logout")
     public ResponseEntity<LoginResponse> logout() {
-        // Trong kiến trúc JWT không trạng thái, việc logout thực tế xảy ra ở client
-        // khi nó xóa token. Backend chỉ cần trả về thành công.
-        // Token sẽ hết hạn theo thời gian (EXPIRATION_MS).
         return ResponseEntity.ok(new LoginResponse(true, "Logout successful"));
     }
 }

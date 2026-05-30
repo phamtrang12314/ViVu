@@ -26,7 +26,7 @@ export default function Footer() {
     { name: 'Câu hỏi thường gặp', href: '#' },
     { name: 'Điều khoản dịch vụ', href: '#' },
     { name: 'Chính sách bảo mật', href: '#' },
-    { name: 'Chính sách hoàn tiền', href: '#' }
+    { name: 'Chính sách hoàn tiền', href: '/refund-policy' }
   ]
 
   return (

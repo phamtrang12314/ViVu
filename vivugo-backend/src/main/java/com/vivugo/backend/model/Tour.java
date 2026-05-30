@@ -260,4 +260,17 @@ public class Tour {
 
     @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<TourPromotion> tourPromotions = new HashSet<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "tour_open_dates", joinColumns = @JoinColumn(name = "tour_id"))
+    @Column(name = "open_date", nullable = false)
+    private Set<LocalDate> openDates = new HashSet<>();
+
+    public Set<LocalDate> getOpenDates() {
+        return openDates;
+    }
+
+    public void setOpenDates(Set<LocalDate> openDates) {
+        this.openDates = openDates;
+    }
 }

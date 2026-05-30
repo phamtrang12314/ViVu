@@ -21,6 +21,8 @@ export const tourAdminApi = {
 
     completeTour: (id: string) => http.put(`/admin/tours/${id}/complete`, null),
 
+    deleteTour: (id: string) => http.delete(`/admin/tours/${id}`),
+
     uploadTourImage(file: File) {
         const formData = new FormData();
         formData.append("file", file);

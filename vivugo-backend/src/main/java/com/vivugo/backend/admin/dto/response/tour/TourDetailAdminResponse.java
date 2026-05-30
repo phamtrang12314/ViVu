@@ -31,6 +31,8 @@ public class TourDetailAdminResponse {
     private List<TourDestinationInfo> tourDestinations;
     private List<PromotionSimpleResponse> promotions;
     private List<ItineraryAdminResponse> itineraries;
+    private List<TourImageInfo> tourImages;
+    private List<LocalDate> openDates;
 
 
     public TourDetailAdminResponse(Tour tour) {
@@ -73,6 +75,18 @@ public class TourDetailAdminResponse {
                     .map(ItineraryAdminResponse::new)
                     .collect(Collectors.toList());
         }
+
+        if (tour.getTourImages() != null) {
+            this.tourImages = tour.getTourImages().stream()
+                    .map(TourImageInfo::new)
+                    .collect(Collectors.toList());
+        }
+
+        if (tour.getOpenDates() != null) {
+            this.openDates = tour.getOpenDates().stream()
+                    .sorted()
+                    .toList();
+        }
     }
 
     @Data
@@ -114,6 +128,17 @@ public class TourDetailAdminResponse {
             this.id = id;
             this.nameDes = nameDes;
             this.region = region;
+        }
+    }
+
+    @Data
+    public static class TourImageInfo {
+        private String url;
+        private String caption;
+
+        public TourImageInfo(TourImage image) {
+            this.url = image.getUrl();
+            this.caption = image.getCaption();
         }
     }
 }

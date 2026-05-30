@@ -27,5 +27,7 @@ public class TourRequest {
     private List<String> destinationIds;
 
     private List<String> promotionIds;
+    private List<String> imageUrls;
+    private List<LocalDate> openDates;
     private List<ItineraryRequest> itineraries;
 }

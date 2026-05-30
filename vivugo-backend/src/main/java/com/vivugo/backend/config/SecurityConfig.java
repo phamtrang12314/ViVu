@@ -4,6 +4,7 @@ import com.vivugo.backend.model.enums.RoleType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -81,6 +82,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/tours", "/api/tours/**", "/api/destinations/**", "/api/tour-types/**").permitAll()
                         .requestMatchers("/api/reviews/**").permitAll()
                         .requestMatchers("/api/webhooks/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/*").permitAll()
                         .requestMatchers("/images/**").permitAll()
                         .requestMatchers("/api/contact-messages").permitAll()
 

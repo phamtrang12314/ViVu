@@ -1,17 +1,27 @@
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Tour } from '../../types/tour'
-import { formatCurrency, resolveAssetUrl } from '../../utils/utils'
-import { FaMapMarkerAlt, FaStar, FaClock, FaHeart, FaBolt } from 'react-icons/fa'
-import Button from '../Button'
-import React, { useContext } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-toastify'
-import { AppContext } from '../../contexts/app.context'
-import { favoriteApi } from '../../apis/favorite.api'
 import type { AxiosError } from 'axios'
 import { motion } from 'framer-motion'
+import { FaMapMarkerAlt, FaStar, FaClock, FaHeart, FaBolt } from 'react-icons/fa'
+import { BusFront, Building2, Clock3, MapPin, UtensilsCrossed, CheckCircle2 } from 'lucide-react'
+import type { Tour } from '../../types/tour'
+import { formatCurrency, resolveAssetUrl } from '../../utils/utils'
+import { buildTourImageSet } from '../../utils/tourVisuals'
+import Button from '../Button'
+import { AppContext } from '../../contexts/app.context'
+import { favoriteApi } from '../../apis/favorite.api'
 
 export type TourCardVariant = 'default' | 'featured' | 'trending' | 'deal'
+
+const featuredServiceItems = [
+  { icon: MapPin, label: 'Điểm đến', tone: 'bg-emerald-50 text-emerald-600' },
+  { icon: Clock3, label: 'Thời lượng', tone: 'bg-blue-50 text-blue-600' },
+  { icon: BusFront, label: 'Xe du lịch', tone: 'bg-amber-50 text-amber-600' },
+  { icon: Building2, label: 'Khách sạn', tone: 'bg-violet-50 text-violet-600' },
+  { icon: UtensilsCrossed, label: 'Ẩm thực', tone: 'bg-rose-50 text-rose-600' }
+]
 
 export default function TourCard({
   tour,
@@ -25,9 +35,7 @@ export default function TourCard({
   const { isAuthenticated, favoriteIds, addFavoriteId, removeFavoriteId } = useContext(AppContext)
   const queryClient = useQueryClient()
 
-  // BẢO VỆ ID: Xử lý lỗi mất ID do JSON parse từ Spring Boot
-  const safeId = tour.tourID || (tour as any).tourId || (tour as any).id || '';
-
+  const safeId = tour.tourID || (tour as any).tourId || (tour as any).id || ''
   const isLiked = favoriteIds.has(safeId)
 
   const addFavoriteMutation = useMutation({ mutationFn: favoriteApi.addFavorite })
@@ -41,9 +49,26 @@ export default function TourCard({
   const durationDays = tour.durationDays || 0
   const durationNights = tour.durationNights || 0
 
-  const handleFavoriteClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const imageSet = useMemo(() => buildTourImageSet(tour, 3), [tour])
+  const displayImages = imageSet.slice(0, 3)
+  const [isHovered, setIsHovered] = useState(false)
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
+  const isFeatured = variant === 'featured'
+  const isTrending = variant === 'trending'
+  const isDeal = variant === 'deal'
+
+  useEffect(() => {
+    if (displayImages.length <= 1) return
+    if (!isFeatured && !isHovered) return
+    const timer = window.setInterval(() => {
+      setActiveImageIndex((current) => (current + 1) % displayImages.length)
+    }, isFeatured ? 5000 : 1200)
+    return () => window.clearInterval(timer)
+  }, [isHovered, isFeatured, displayImages.length])
+
+  const handleFavoriteClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
 
     if (!isAuthenticated) {
       toast.info('Bạn cần đăng nhập để thực hiện chức năng này')
@@ -54,68 +79,87 @@ export default function TourCard({
       removeFavoriteMutation.mutate(safeId, {
         onSuccess: () => {
           removeFavoriteId(safeId)
-          toast.success('Đã xóa khỏi danh sách yêu thích!')
+          toast.success('Đã xóa khỏi danh sách yêu thích')
           queryClient.invalidateQueries({ queryKey: ['favoriteIds'] })
         },
-        onError: () => toast.error('Có lỗi xảy ra, vui lòng thử lại.')
+        onError: () => toast.error('Có lỗi xảy ra, vui lòng thử lại')
       })
-    } else {
-      addFavoriteMutation.mutate(
-        { tourId: safeId },
-        {
-          onSuccess: () => {
+      return
+    }
+
+    addFavoriteMutation.mutate(
+      { tourId: safeId },
+      {
+        onSuccess: () => {
+          addFavoriteId(safeId)
+          toast.success('Đã thêm tour vào danh sách yêu thích')
+          queryClient.invalidateQueries({ queryKey: ['favoriteIds'] })
+        },
+        onError: (error: AxiosError | Error) => {
+          const axiosError = error as AxiosError<{ message: string }>
+          if (axiosError.response?.status === 409) {
             addFavoriteId(safeId)
-            toast.success('Đã thêm tour vào danh sách yêu thích!')
-            queryClient.invalidateQueries({ queryKey: ['favoriteIds'] })
-          },
-          onError: (error: AxiosError | Error) => {
-            const axiosError = error as AxiosError<{ message: string }>
-            if (axiosError.response?.status === 409) {
-              addFavoriteId(safeId)
-              toast.info('Bạn đã yêu thích tour này rồi.')
-            } else {
-              toast.error('Có lỗi xảy ra, vui lòng thử lại sau.')
-            }
+            toast.info('Bạn đã yêu thích tour này rồi')
+          } else {
+            toast.error('Có lỗi xảy ra, vui lòng thử lại')
           }
         }
-      )
-    }
+      }
+    )
   }
 
-  const isFeatured = variant === 'featured'
-  const isTrending = variant === 'trending'
-  const isDeal = variant === 'deal'
+  const featureHighlights = [
+    'Tham quan các điểm đến nổi bật theo lịch trình.',
+    'Lịch trình vừa phải, phù hợp gia đình và nhóm bạn.',
+    'Hướng dẫn viên hỗ trợ xuyên suốt hành trình.'
+  ]
+  const itineraryHighlights = [
+    `Ngày 1: Khám phá ${tour.destinationName || 'điểm đến chính'}`,
+    `Ngày 2: Trải nghiệm địa phương và ẩm thực đặc sắc`
+  ]
 
   const cardClass = [
-    'bg-white/82 backdrop-blur-xl p-3 shadow-[var(--vivugo-shadow)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.12)] transition-all duration-300 group border flex flex-col h-full',
+    'group flex h-full flex-col border bg-white/82 p-3 shadow-[var(--vivugo-shadow)] backdrop-blur-xl transition-all duration-300 hover:shadow-[0_20px_40px_rgb(0,0,0,0.12)]',
     'rounded-[var(--vivugo-radius)]',
     isTrending ? 'border-amber-200/80 ring-2 ring-amber-400/30 hover:ring-amber-400/50' : 'border-gray-100',
-    isFeatured ? 'md:min-h-[520px]' : ''
+    isFeatured ? 'md:min-h-[560px]' : ''
   ].join(' ')
 
   const imageHeight = isFeatured ? 'h-72 md:h-80' : 'h-60'
 
   return (
     <motion.div
-      whileHover={{ y: -6 }}
+      whileHover={{ y: -6, scale: 1.018 }}
       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
       className={cardClass}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={`relative ${imageHeight} rounded-3xl overflow-hidden mb-4`}>
-        <Link to={`/tours/${safeId}`} className="block w-full h-full">
+      <div className={`relative ${imageHeight} mb-4 overflow-hidden rounded-3xl`}>
+        <Link to={`/tours/${safeId}`} className="block h-full w-full">
           <img
-            src={resolveAssetUrl(tour.imageURL, 'https://placehold.co/400x256/E5E7EB/6B7280?text=Tour')}
+            src={resolveAssetUrl(displayImages[activeImageIndex] || imageSet[0], '/hero.jpg')}
             alt={tour.title}
-            onError={(e) => {
-              e.currentTarget.src = 'https://placehold.co/400x256/E5E7EB/6B7280?text=Tour'
+            onError={(event) => {
+              event.currentTarget.src = '/hero.jpg'
             }}
-            className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110"
+            className="h-full w-full transform object-cover transition-transform duration-700 group-hover:scale-110"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
+
+          <div className="absolute bottom-3 right-3 flex gap-1.5">
+            {displayImages.map((_, index) => (
+              <span
+                key={index}
+                className={`h-1.5 w-1.5 rounded-full transition ${index === activeImageIndex ? 'bg-white' : 'bg-white/45'}`}
+              />
+            ))}
+          </div>
+
         </Link>
 
         {isTrending && (
-          <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-amber-500/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+          <div className="absolute left-4 top-4 z-10 flex items-center gap-1 rounded-full bg-amber-500/90 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur">
             <FaBolt size={12} /> Trending
           </div>
         )}
@@ -125,8 +169,8 @@ export default function TourCard({
             whileTap={{ scale: 0.85 }}
             onClick={handleFavoriteClick}
             disabled={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
-            className={`absolute top-4 right-4 z-10 p-2.5 bg-white/70 backdrop-blur-md rounded-full shadow-sm transition-colors
-              ${isLiked ? 'text-red-500 bg-white' : 'text-gray-500 hover:text-red-500 hover:bg-white'}
+            className={`absolute right-4 top-4 z-10 rounded-full bg-white/70 p-2.5 shadow-sm backdrop-blur-md transition-colors
+              ${isLiked ? 'bg-white text-red-500' : 'text-gray-500 hover:bg-white hover:text-red-500'}
               ${addFavoriteMutation.isPending || removeFavoriteMutation.isPending ? 'cursor-not-allowed opacity-50' : ''}
             `}
             aria-label="Yêu thích"
@@ -136,23 +180,22 @@ export default function TourCard({
         )}
 
         {tour.tourTypeName && !isTrending && (
-          <div className="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-md border border-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full capitalize shadow-sm">
+          <div className="absolute left-4 top-4 z-10 rounded-full border border-white/20 bg-black/40 px-3 py-1.5 text-xs font-bold capitalize text-white shadow-sm backdrop-blur-md">
             {tour.tourTypeName.toLowerCase().replace('tour ', '')}
           </div>
         )}
 
         {tour.discountPercentage > 0 && (
           <div
-            className={`absolute z-10 text-white text-xs font-bold shadow-lg ${
+            className={`absolute z-10 text-xs font-bold text-white shadow-lg ${
               isDeal
-                ? 'top-0 left-0 bg-gradient-to-br from-red-600 to-rose-500 px-4 py-2 rounded-br-2xl clip-ribbon'
-                : 'bottom-4 left-4 bg-gradient-to-r from-red-500 to-rose-500 px-3 py-1.5 rounded-full'
+                ? 'clip-ribbon left-0 top-0 rounded-br-2xl bg-gradient-to-br from-red-600 to-rose-500 px-4 py-2'
+                : 'bottom-4 left-4 rounded-full bg-gradient-to-r from-red-500 to-rose-500 px-3 py-1.5'
             }`}
           >
             {isDeal ? (
               <>
-                <span className="block text-[10px] uppercase opacity-90">Ưu đãi</span>
-                -{tour.discountPercentage}%
+                <span className="block text-[10px] uppercase opacity-90">Ưu đãi</span>-{tour.discountPercentage}%
               </>
             ) : (
               <>Giảm {tour.discountPercentage}%</>
@@ -161,12 +204,12 @@ export default function TourCard({
         )}
       </div>
 
-      <div className="px-3 flex flex-col flex-grow">
-        <div className="flex justify-between items-center text-sm text-gray-500 mb-3">
-          <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-1 rounded-md font-medium">
+      <div className="flex flex-grow flex-col px-3">
+        <div className="mb-3 flex items-center justify-between text-sm text-gray-500">
+          <div className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 font-medium text-amber-600">
             <FaStar />
             <span>{averageRating.toFixed(1)}</span>
-            <span className="text-gray-400 text-xs ml-1">({reviewCount})</span>
+            <span className="ml-1 text-xs text-gray-400">({reviewCount})</span>
           </div>
           <div className="flex items-center gap-1.5 font-medium">
             <FaClock className="text-gray-400" />
@@ -175,7 +218,7 @@ export default function TourCard({
         </div>
 
         <h3
-          className={`font-bold text-gray-900 mb-2 line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors ${
+          className={`mb-2 line-clamp-2 font-bold leading-snug text-gray-900 transition-colors group-hover:text-blue-600 ${
             isFeatured ? 'text-xl md:text-2xl' : 'text-lg'
           }`}
         >
@@ -183,41 +226,82 @@ export default function TourCard({
         </h3>
 
         {isFeatured && (
-          <div className="mb-4 rounded-2xl border border-white/70 bg-white/48 backdrop-blur-xl p-4 text-sm text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="mb-4 space-y-3">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
               <div>
-                <span className="block text-xs font-semibold uppercase text-slate-400">Thời lượng</span>
-                <span className="font-bold text-slate-800">
+                <p className="text-[11px] font-semibold uppercase text-slate-500">Thời lượng</p>
+                <p className="text-lg font-black text-slate-900">
                   {durationDays} ngày {durationNights} đêm
-                </span>
+                </p>
               </div>
               <div>
-                <span className="block text-xs font-semibold uppercase text-slate-400">Điểm đến</span>
-                <span className="font-bold text-slate-800 line-clamp-1">
-                  {tour.destinationName || 'Đang cập nhật'}
-                </span>
+                <p className="text-[11px] font-semibold uppercase text-slate-500">Khởi hành</p>
+                <p className="text-lg font-black text-slate-900 line-clamp-1">{tour.departurePlace || 'Đang cập nhật'}</p>
               </div>
+            </div>
+
+            <div className="grid grid-cols-5 gap-2 rounded-2xl border border-slate-100 bg-white p-2.5">
+              {featuredServiceItems.map((item) => {
+                const Icon = item.icon
+                return (
+                  <div key={item.label} className="text-center">
+                    <span className={`mx-auto inline-flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}>
+                      <Icon size={18} />
+                    </span>
+                    <p className="mt-1 line-clamp-2 text-[11px] font-bold leading-tight text-slate-700">{item.label}</p>
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className="text-[15px] leading-relaxed text-slate-700">
+              Khám phá hành trình nổi bật tại {tour.destinationName || 'điểm đến này'}, lịch trình rõ ràng và dịch vụ phù hợp cho cả gia đình.
+            </p>
+
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-3">
+              <p className="mb-2 text-sm font-black uppercase text-emerald-700">Điểm nổi bật</p>
+              <ul className="space-y-1.5 text-sm text-emerald-900">
+                {featureHighlights.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/80 p-3">
+              <p className="mb-2 text-sm font-black uppercase text-blue-700">Lịch trình</p>
+              <ul className="space-y-1 text-sm font-semibold text-slate-800">
+                {itineraryHighlights.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {['Văn hóa', 'Di tích', 'Ẩm thực', 'Khởi hành hàng tuần'].map((tag) => (
+                <span key={tag} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                  {tag}
+                </span>
+              ))}
             </div>
           </div>
         )}
 
-        <div className="flex items-center text-sm text-gray-500 mb-4 font-medium">
+        <div className="mb-4 flex items-center text-sm font-medium text-gray-500">
           <FaMapMarkerAlt className="mr-2 text-blue-500" />
           <span className="truncate">{tour.destinationName || 'Đang cập nhật'}</span>
         </div>
 
-        <div className="border-t border-gray-100 mb-4 w-full"></div>
+        <div className="mb-4 w-full border-t border-gray-100" />
 
         <div className="mt-auto">
-          <div className="flex flex-col items-end justify-end mb-4">
-            <span className="text-xs text-gray-400 font-medium uppercase mb-0.5">Giá chỉ từ</span>
+          <div className="mb-4 flex flex-col items-end justify-end">
+            <span className="mb-0.5 text-xs font-medium uppercase text-gray-400">Giá chỉ từ</span>
             <div className="flex items-baseline gap-2">
-              {hasDiscount && (
-                <span className="text-gray-400 line-through text-sm font-medium">
-                  {formatCurrency(priceAdult)}
-                </span>
-              )}
-              <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+              {hasDiscount && <span className="text-sm font-medium text-gray-400 line-through">{formatCurrency(priceAdult)}</span>}
+              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-xl font-extrabold text-transparent">
                 {formatCurrency(finalPrice)}
               </span>
             </div>
@@ -228,7 +312,7 @@ export default function TourCard({
               as="link"
               to={`/tours/${safeId}`}
               variant="outline"
-              className="flex-1 !rounded-xl !py-3 !text-sm !font-bold !bg-white/70 !text-slate-700 hover:!bg-white hover:!-translate-y-0.5"
+              className="flex-1 !rounded-xl !bg-white/70 !py-3 !text-sm !font-bold !text-slate-700 hover:!bg-white hover:!-translate-y-0.5"
             >
               Chi tiết
             </Button>
@@ -236,7 +320,7 @@ export default function TourCard({
               as="link"
               to={`/tours/${safeId}`}
               variant="solid"
-              className="flex-1 !rounded-xl !py-3 !text-sm !font-black !text-white !bg-gradient-to-r !from-blue-600 !to-indigo-600 hover:!from-blue-700 hover:!to-indigo-700 hover:!-translate-y-0.5 hover:!scale-[1.02] !shadow-[0_12px_26px_rgba(37,99,235,0.32)] hover:!shadow-[0_18px_34px_rgba(37,99,235,0.42)]"
+              className="flex-1 !rounded-xl !bg-gradient-to-r !from-blue-600 !to-indigo-600 !py-3 !text-sm !font-black !text-white !shadow-[0_12px_26px_rgba(37,99,235,0.32)] hover:!-translate-y-0.5 hover:!scale-[1.02] hover:!from-blue-700 hover:!to-indigo-700 hover:!shadow-[0_18px_34px_rgba(37,99,235,0.42)]"
             >
               Đặt ngay
             </Button>

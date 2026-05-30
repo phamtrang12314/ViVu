@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { FaArrowRight, FaBolt, FaCompass, FaTag } from 'react-icons/fa'
@@ -22,25 +22,49 @@ type Props = {
   layout?: 'grid' | 'featured-split'
 }
 
+const FEATURE_ROTATE_MS = 5000
+
+function FeaturedSplitGrid({ tours }: { tours: Tour[] }) {
+  const [featuredIndex, setFeaturedIndex] = useState(0)
+
+  useEffect(() => {
+    if (tours.length <= 1) return
+    const timer = window.setInterval(() => {
+      setFeaturedIndex((current) => (current + 1) % tours.length)
+    }, FEATURE_ROTATE_MS)
+    return () => window.clearInterval(timer)
+  }, [tours.length])
+
+  useEffect(() => {
+    if (featuredIndex >= tours.length) setFeaturedIndex(0)
+  }, [featuredIndex, tours.length])
+
+  const featuredTour = tours[featuredIndex]
+  const sideTours = useMemo(() => tours.filter((_, index) => index !== featuredIndex).slice(0, 4), [tours, featuredIndex])
+
+  if (!featuredTour) return null
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="lg:row-span-2">
+        <TourCard key={featuredTour.tourID} tour={featuredTour} variant="featured" />
+      </div>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        {sideTours.map((tour) => (
+          <TourCard key={tour.tourID} tour={tour} variant="default" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function TourGrid({ tours, variant }: { tours: Tour[]; variant: Variant }) {
   if (variant === 'featured' && tours.length > 0) {
-    const [hero, ...rest] = tours
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="lg:row-span-2">
-          <TourCard tour={hero} variant="featured" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {rest.slice(0, 4).map((tour) => (
-            <TourCard key={tour.tourID} tour={tour} variant="default" />
-          ))}
-        </div>
-      </div>
-    )
+    return <FeaturedSplitGrid tours={tours} />
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {tours.map((tour) => (
         <TourCard
           key={tour.tourID}
@@ -70,35 +94,32 @@ export default function TourShowcaseSection({
   const tours = data?.data || []
 
   return (
-    <AnimateSection className="py-16 md:py-20 bg-[#f8fafc]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <AnimateSection className="bg-[#f8fafc] py-16 md:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeader
           badge={badge}
           title={title}
           subtitle={subtitle}
           action={
-            <Link
-              to={viewAllTo}
-              className="hidden md:inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-800 group"
-            >
-              Xem tất cả <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
+            <Link to={viewAllTo} className="group hidden items-center gap-2 font-semibold text-blue-600 hover:text-blue-800 md:inline-flex">
+              Xem tất cả <FaArrowRight className="transition-transform group-hover:translate-x-1" />
             </Link>
           }
         />
 
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin h-12 w-12 border-t-2 border-b-2 border-blue-600 rounded-full" />
+            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-blue-600" />
           </div>
         ) : tours.length === 0 ? (
-          <p className="text-center text-gray-500 py-12">Chưa có tour phù hợp.</p>
+          <p className="py-12 text-center text-gray-500">Chưa có tour phù hợp.</p>
         ) : layout === 'featured-split' && variant === 'featured' ? (
           <TourGrid tours={tours} variant="featured" />
         ) : (
           <TourGrid tours={tours} variant={variant} />
         )}
 
-        <div className="text-center mt-10 md:hidden">
+        <div className="mt-10 text-center md:hidden">
           <Button as="link" to={viewAllTo} variant="outline" className="!rounded-xl">
             Xem tất cả
           </Button>
@@ -113,15 +134,15 @@ export function FeaturedToursSection() {
     <TourShowcaseSection
       variant="featured"
       queryKey="featuredTours"
-      queryFn={() => tourApi.getFeaturedTours().then((r) => ({ data: r.data.content }))}
+      queryFn={() => tourApi.getFeaturedTours().then((response) => ({ data: response.data.content }))}
       layout="featured-split"
       badge={
-        <span className="text-blue-600 font-bold tracking-wider uppercase text-sm bg-blue-100 px-4 py-1.5 rounded-full mb-4 inline-flex items-center gap-2">
+        <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-1.5 text-sm font-bold uppercase tracking-wider text-blue-600">
           <FaCompass /> Nổi bật
         </span>
       }
-      title="Tour Du Lịch Nổi Bật"
-      subtitle="Hành trình được yêu thích nhất với chất lượng dịch vụ hàng đầu."
+      title="Tour Nổi Bật"
+      subtitle="Các hành trình được yêu thích với lịch trình rõ ràng, giá minh bạch và trải nghiệm ổn định."
     />
   )
 }
@@ -131,14 +152,14 @@ export function TrendingToursSection() {
     <TourShowcaseSection
       variant="trending"
       queryKey="trendingTours"
-      queryFn={() => tourApi.getTrendingTours(8).then((r) => ({ data: r.data }))}
+      queryFn={() => tourApi.getTrendingTours(8).then((response) => ({ data: response.data }))}
       badge={
-        <span className="text-amber-600 font-bold tracking-wider uppercase text-sm bg-amber-100 px-4 py-1.5 rounded-full mb-4 inline-flex items-center gap-2">
+        <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 text-sm font-bold uppercase tracking-wider text-amber-600">
           <FaBolt /> Xu hướng
         </span>
       }
-      title="Trending Tours"
-      subtitle="Các tour đang được đặt nhiều nhất tuần này."
+      title="Tour Trending"
+      subtitle="Những tour đang được đặt nhiều nhất trong tuần."
       viewAllTo="/tours?sort=ranking,asc"
     />
   )
@@ -149,14 +170,14 @@ export function BestDealsSection() {
     <TourShowcaseSection
       variant="deals"
       queryKey="dealTours"
-      queryFn={() => tourApi.getDealTours(8).then((r) => ({ data: r.data }))}
+      queryFn={() => tourApi.getDealTours(8).then((response) => ({ data: response.data }))}
       badge={
-        <span className="text-red-600 font-bold tracking-wider uppercase text-sm bg-red-100 px-4 py-1.5 rounded-full mb-4 inline-flex items-center gap-2">
-          <FaTag /> Ưu đãi
+        <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-red-100 px-4 py-1.5 text-sm font-bold uppercase tracking-wider text-red-600">
+          <FaTag /> Hot deal
         </span>
       }
-      title="Best Deals"
-      subtitle="Giảm giá sốc — đặt ngay trước khi hết chỗ."
+      title="Ưu đãi hấp dẫn"
+      subtitle="Tổng hợp tour giảm giá theo thời điểm, số chỗ giới hạn."
       viewAllTo="/tours?deals_only=true"
     />
   )
