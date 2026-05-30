@@ -15,6 +15,7 @@ import ChangePassword from "./screens/Account/pages/ChangePassword";
 import HistoryTour from "./screens/Account/pages/HistoryTour";
 import FavouriteTour from "./screens/Account/pages/FavouriteTour";
 import PaymentScreen from "./screens/PaymentScreen/PaymentScreen";
+import RefundPolicyScreen from "./screens/RefundPolicyScreen";
 
 export default function useRouteElements() {
   return useRoutes([
@@ -72,6 +73,14 @@ export default function useRouteElements() {
       element: (
         <MainLayout>
           <PaymentScreen />
+        </MainLayout>
+      ),
+    },
+    {
+      path: "/refund-policy",
+      element: (
+        <MainLayout>
+          <RefundPolicyScreen />
         </MainLayout>
       ),
     },

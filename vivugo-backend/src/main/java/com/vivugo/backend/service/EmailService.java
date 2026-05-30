@@ -1,8 +1,10 @@
 package com.vivugo.backend.service;
 
 import com.vivugo.backend.model.Booking;
+import jakarta.mail.Session;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.InternetAddress;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.core.env.Environment;
@@ -12,9 +14,17 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
@@ -79,6 +89,11 @@ public class EmailService {
                         "Đội ngũ ViVuGo",
                 userName, toEmail);
 
+        if (sendViaHttpProvider(toEmail, "Chào mừng bạn đến với ViVuGo - Du lịch Việt Nam!", body, null)) {
+            System.out.println("Registration success email sent via HTTP provider to: " + toEmail);
+            return;
+        }
+
         for (JavaMailSenderImpl sender : gmailSenders()) {
             try {
                 MimeMessage message = sender.createMimeMessage();
@@ -106,6 +121,15 @@ public class EmailService {
                 + "\nMã có hiệu lực trong " + minutes + " phút.";
         String html = buildOtpHtml(otpCode, minutes, purpose);
 
+        try {
+            if (sendViaHttpProvider(toEmail, subject, text, html)) {
+                System.out.println("OTP email sent via HTTP provider to: " + toEmail);
+                return;
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot send OTP email: " + e.getMessage(), e);
+        }
+
         RuntimeException lastError = null;
         for (JavaMailSenderImpl sender : gmailSenders()) {
             try {
@@ -119,7 +143,7 @@ public class EmailService {
                 System.out.println("OTP email sent to: " + toEmail);
                 return;
             } catch (Exception e) {
-                lastError = new IllegalStateException("Cannot send OTP email: " + e.getMessage(), e);
+                lastError = new IllegalStateException("Cannot send OTP email: " + mailFailureMessage(e), e);
                 System.err.println("Error sending OTP email to " + toEmail + ": " + e.getMessage());
             }
         }
@@ -128,6 +152,10 @@ public class EmailService {
     }
 
     public boolean hasMailCredentials() {
+        if (hasHttpMailProvider()) {
+            return true;
+        }
+
         String username = firstNonBlank(
                 environment.getProperty("MAIL_USERNAME"),
                 environment.getProperty("EMAIL_USER"),
@@ -184,10 +212,18 @@ public class EmailService {
         }
 
         password = password.replaceAll("\\s+", "");
-        int fallbackPort = primaryPort == 465 ? 587 : 465;
         List<JavaMailSenderImpl> senders = new ArrayList<>();
         senders.add(createSender(host, primaryPort, username, password));
-        senders.add(createSender(host, fallbackPort, username, password));
+        String fallbackPortValue = firstNonBlank(
+                environment.getProperty("MAIL_FALLBACK_PORT"),
+                environment.getProperty("spring.mail.fallback-port")
+        );
+        if (fallbackPortValue != null) {
+            int fallbackPort = parsePort(fallbackPortValue);
+            if (fallbackPort != primaryPort) {
+                senders.add(createSender(host, fallbackPort, username, password));
+            }
+        }
         return senders;
     }
 
@@ -266,6 +302,15 @@ public class EmailService {
         }
     }
 
+    private String publicSiteUrl() {
+        return firstNonBlank(
+                environment.getProperty("VITE_CLIENT_URL"),
+                environment.getProperty("CLIENT_URL"),
+                environment.getProperty("APP_FRONTEND_URL"),
+                "https://vivugo-client.vercel.app"
+        ).replaceAll("/+$", "");
+    }
+
     private String escapeHtml(String value) {
         return value == null ? "" : value
                 .replace("&", "&amp;")
@@ -275,19 +320,275 @@ public class EmailService {
                 .replace("'", "&#039;");
     }
 
+    private boolean sendViaHttpProvider(String toEmail, String subject, String text, String html) {
+        RuntimeException lastError = null;
+
+        if (hasGmailApiProvider()) {
+            try {
+                sendGmailApiEmail(toEmail, subject, text, html);
+                return true;
+            } catch (RuntimeException e) {
+                lastError = e;
+                System.err.println("Gmail API email provider failed: " + e.getMessage());
+            }
+        }
+
+        String brevoApiKey = firstNonBlank(
+                environment.getProperty("BREVO_API_KEY"),
+                environment.getProperty("SENDINBLUE_API_KEY")
+        );
+        if (brevoApiKey != null) {
+            try {
+                sendBrevoEmail(brevoApiKey, toEmail, subject, text, html);
+                return true;
+            } catch (RuntimeException e) {
+                lastError = e;
+                System.err.println("Brevo email provider failed: " + e.getMessage());
+            }
+        }
+
+        String resendApiKey = environment.getProperty("RESEND_API_KEY");
+        if (resendApiKey != null && !resendApiKey.isBlank()) {
+            try {
+                sendResendEmail(resendApiKey, toEmail, subject, text, html);
+                return true;
+            } catch (RuntimeException e) {
+                lastError = e;
+                System.err.println("Resend email provider failed: " + e.getMessage());
+            }
+        }
+
+        if (lastError != null) {
+            throw lastError;
+        }
+        return false;
+    }
+
+    private boolean hasHttpMailProvider() {
+        return firstNonBlank(
+                environment.getProperty("GOOGLE_CLIENT_ID"),
+                environment.getProperty("GMAIL_CLIENT_ID"),
+                environment.getProperty("BREVO_API_KEY"),
+                environment.getProperty("SENDINBLUE_API_KEY"),
+                environment.getProperty("RESEND_API_KEY")
+        ) != null;
+    }
+
+    private boolean hasGmailApiProvider() {
+        return firstNonBlank(
+                environment.getProperty("GOOGLE_CLIENT_ID"),
+                environment.getProperty("GMAIL_CLIENT_ID")
+        ) != null
+                && firstNonBlank(
+                environment.getProperty("GOOGLE_CLIENT_SECRET"),
+                environment.getProperty("GMAIL_CLIENT_SECRET")
+        ) != null
+                && firstNonBlank(
+                environment.getProperty("GOOGLE_REFRESH_TOKEN"),
+                environment.getProperty("GMAIL_REFRESH_TOKEN")
+        ) != null;
+    }
+
+    private void sendGmailApiEmail(String toEmail, String subject, String text, String html) {
+        String accessToken = fetchGmailAccessToken();
+        String rawMessage = buildGmailRawMessage(toEmail, subject, text, html);
+        String body = "{\"raw\":\"" + rawMessage + "\"}";
+        postEmailJson("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+                body,
+                "Authorization",
+                "Bearer " + accessToken);
+    }
+
+    private String fetchGmailAccessToken() {
+        String clientId = firstNonBlank(
+                environment.getProperty("GOOGLE_CLIENT_ID"),
+                environment.getProperty("GMAIL_CLIENT_ID")
+        );
+        String clientSecret = firstNonBlank(
+                environment.getProperty("GOOGLE_CLIENT_SECRET"),
+                environment.getProperty("GMAIL_CLIENT_SECRET")
+        );
+        String refreshToken = firstNonBlank(
+                environment.getProperty("GOOGLE_REFRESH_TOKEN"),
+                environment.getProperty("GMAIL_REFRESH_TOKEN")
+        );
+
+        String body = "client_id=" + urlEncode(clientId)
+                + "&client_secret=" + urlEncode(clientSecret)
+                + "&refresh_token=" + urlEncode(refreshToken)
+                + "&grant_type=refresh_token";
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://oauth2.googleapis.com/token"))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                    .build();
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                    .send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new IllegalStateException("Gmail token API returned HTTP " + response.statusCode() + ": " + response.body());
+            }
+
+            String accessToken = extractJsonString(response.body(), "access_token");
+            if (accessToken == null || accessToken.isBlank()) {
+                throw new IllegalStateException("Gmail token API response did not include access_token.");
+            }
+            return accessToken;
+        } catch (Exception e) {
+            throw new IllegalStateException("Gmail token request failed: " + e.getMessage(), e);
+        }
+    }
+
+    private String buildGmailRawMessage(String toEmail, String subject, String text, String html) {
+        try {
+            MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
+            message.setFrom(new InternetAddress(fromEmail(), fromName(), "UTF-8"));
+            message.setRecipients(MimeMessage.RecipientType.TO, InternetAddress.parse(toEmail));
+            message.setSubject(subject, "UTF-8");
+            message.setContent(html != null ? html : text.replace("\n", "<br/>"), "text/html; charset=UTF-8");
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            message.writeTo(outputStream);
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(outputStream.toByteArray());
+        } catch (Exception e) {
+            throw new IllegalStateException("Gmail MIME build failed: " + e.getMessage(), e);
+        }
+    }
+
+    private void sendBrevoEmail(String apiKey, String toEmail, String subject, String text, String html) {
+        String body = "{"
+                + "\"sender\":{\"name\":\"" + json(fromName()) + "\",\"email\":\"" + json(fromEmail()) + "\"},"
+                + "\"to\":[{\"email\":\"" + json(toEmail) + "\"}],"
+                + "\"subject\":\"" + json(subject) + "\","
+                + "\"textContent\":\"" + json(text) + "\","
+                + "\"htmlContent\":\"" + json(html != null ? html : text.replace("\n", "<br/>")) + "\""
+                + "}";
+        postEmailJson("https://api.brevo.com/v3/smtp/email", body, "api-key", apiKey);
+    }
+
+    private void sendResendEmail(String apiKey, String toEmail, String subject, String text, String html) {
+        String from = firstNonBlank(
+                environment.getProperty("RESEND_FROM"),
+                fromName() + " <" + fromEmail() + ">"
+        );
+        String body = "{"
+                + "\"from\":\"" + json(from) + "\","
+                + "\"to\":[\"" + json(toEmail) + "\"],"
+                + "\"subject\":\"" + json(subject) + "\","
+                + "\"text\":\"" + json(text) + "\","
+                + "\"html\":\"" + json(html != null ? html : text.replace("\n", "<br/>")) + "\""
+                + "}";
+        postEmailJson("https://api.resend.com/emails", body, "Authorization", "Bearer " + apiKey);
+    }
+
+    private void postEmailJson(String url, String body, String authHeader, String authValue) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .header(authHeader, authValue)
+                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                    .build();
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                    .send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new IllegalStateException("Email API returned HTTP " + response.statusCode() + ": " + response.body());
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Email API send failed: " + e.getMessage(), e);
+        }
+    }
+
+    private String fromEmail() {
+        return firstNonBlank(
+                environment.getProperty("MAIL_FROM_EMAIL"),
+                environment.getProperty("BREVO_FROM_EMAIL"),
+                environment.getProperty("RESEND_FROM_EMAIL"),
+                environment.getProperty("MAIL_USERNAME"),
+                environment.getProperty("EMAIL_USER"),
+                environment.getProperty("SPRING_MAIL_USERNAME")
+        );
+    }
+
+    private String fromName() {
+        return firstNonBlank(environment.getProperty("MAIL_FROM_NAME"), SENDER_DISPLAY_NAME);
+    }
+
+    private String json(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\b", "\\b")
+                .replace("\f", "\\f")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+    }
+
+    private String urlEncode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
+    }
+
+    private String extractJsonString(String json, String key) {
+        if (json == null || key == null) {
+            return null;
+        }
+
+        String pattern = "\"" + key + "\"";
+        int keyIndex = json.indexOf(pattern);
+        if (keyIndex < 0) {
+            return null;
+        }
+
+        int colonIndex = json.indexOf(':', keyIndex + pattern.length());
+        if (colonIndex < 0) {
+            return null;
+        }
+
+        int valueStart = json.indexOf('"', colonIndex + 1);
+        if (valueStart < 0) {
+            return null;
+        }
+
+        StringBuilder value = new StringBuilder();
+        boolean escaped = false;
+        for (int i = valueStart + 1; i < json.length(); i++) {
+            char ch = json.charAt(i);
+            if (escaped) {
+                value.append(ch);
+                escaped = false;
+            } else if (ch == '\\') {
+                escaped = true;
+            } else if (ch == '"') {
+                return value.toString();
+            } else {
+                value.append(ch);
+            }
+        }
+
+        return null;
+    }
+
+    private String mailFailureMessage(Exception e) {
+        String message = e == null ? "" : e.getMessage();
+        if (message != null && message.contains("Couldn't connect to host")) {
+            return "SMTP outbound is blocked by the hosting provider. Configure BREVO_API_KEY or RESEND_API_KEY to send email via HTTPS API.";
+        }
+        return message;
+    }
+
     @Async
     public void sendPaymentSuccessEmail(PaymentSuccessEmailData data) {
         try {
-            MimeMessage message = javaMailSenderImpl.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(javaMailSenderImpl.getUsername(), SENDER_DISPLAY_NAME);
-            helper.setTo(data.getToEmail());
-            helper.setSubject(String.format("Xác nhận thanh toán thành công - Mã đơn: %s", data.getBookingId()));
-
             // Format tiền tệ
             NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
             String formattedAmount = currencyFormatter.format(data.getFinalAmount());
+
+            String policyUrl = publicSiteUrl() + "/refund-policy";
 
             // Template HTML
             String htmlTemplate = """
@@ -303,7 +604,10 @@ public class EmailService {
                         <li><b>Tổng thanh toán:</b> <span style='color: #0284c7; font-weight: bold;'>%s</span></li>
                     </ul>
                 </div>
-                <p>Cảm ơn bạn đã tin tưởng và lựa chọn ViVuGo. Chúc bạn có một chuyến đi tuyệt vời!</p>
+                <p>Cảm ơn bạn đã tin tưởng và lựa chọn ViVuGo. Chúc bạn có một chuyến đi thật vui, an toàn và nhiều kỷ niệm đẹp.</p>
+                <p style='font-size: 13px; color: #64748b;'>Lưu ý nhỏ: nếu cần thay đổi kế hoạch, bạn có thể xem chính sách hủy và hoàn tiền tại
+                    <a href='%s' style='color:#2563eb;'>%s</a>.
+                </p>
                 <p>Trân trọng,<br/>Đội ngũ ViVuGo</p>
                 """;
 
@@ -315,12 +619,31 @@ public class EmailService {
                     data.getStartDate(),
                     data.getNumAdults(),
                     data.getNumChildren(),
-                    formattedAmount
+                    formattedAmount,
+                    policyUrl,
+                    policyUrl
             );
 
+            if (sendViaHttpProvider(
+                    data.getToEmail(),
+                    String.format("Xác nhận thanh toán thành công - Mã đơn: %s", data.getBookingId()),
+                    "",
+                    htmlContent
+            )) {
+                System.out.println("Payment success email sent via HTTP provider to: " + data.getToEmail());
+                return;
+            }
+
+            JavaMailSenderImpl sender = gmailSenders().get(0);
+            MimeMessage message = sender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(sender.getUsername(), SENDER_DISPLAY_NAME);
+            helper.setTo(data.getToEmail());
+            helper.setSubject(String.format("Xác nhận thanh toán thành công - Mã đơn: %s", data.getBookingId()));
             helper.setText(htmlContent, true); // true để bật chế độ HTML
 
-            javaMailSender.send(message);
+            sender.send(message);
             System.out.println("Payment success email sent to: " + data.getToEmail());
 
         } catch (Exception e) {
@@ -333,16 +656,6 @@ public class EmailService {
     @Async
     public void sendBookingCanceledEmail(BookingCanceledEmailData data) {
         try {
-            MimeMessage message = javaMailSenderImpl.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(javaMailSenderImpl.getUsername(), SENDER_DISPLAY_NAME);
-            helper.setTo(data.getToEmail());
-            helper.setSubject(String.format(
-                    "Xác nhận hủy đơn đặt tour - Mã đơn: %s",
-                    data.getBookingId()
-            ));
-
             NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
             String formattedAmount = currencyFormatter.format(
                     data.getFinalAmount() != null ? data.getFinalAmount() : 0.0
@@ -377,8 +690,28 @@ public class EmailService {
                     formattedAmount
             );
 
+            if (sendViaHttpProvider(
+                    data.getToEmail(),
+                    String.format("Xác nhận hủy đơn đặt tour - Mã đơn: %s", data.getBookingId()),
+                    "",
+                    htmlContent
+            )) {
+                System.out.println("Booking canceled email sent via HTTP provider to: " + data.getToEmail());
+                return;
+            }
+
+            JavaMailSenderImpl sender = gmailSenders().get(0);
+            MimeMessage message = sender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(sender.getUsername(), SENDER_DISPLAY_NAME);
+            helper.setTo(data.getToEmail());
+            helper.setSubject(String.format(
+                    "Xác nhận hủy đơn đặt tour - Mã đơn: %s",
+                    data.getBookingId()
+            ));
             helper.setText(htmlContent, true);
-            javaMailSender.send(message);
+            sender.send(message);
             System.out.println("Booking canceled email sent to: " + data.getToEmail());
 
         } catch (Exception e) {

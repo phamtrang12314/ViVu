@@ -12,7 +12,6 @@ const navItems = [
   { path: '/', label: 'Home' },
   { path: '/tours', label: 'Tours' },
   { path: '/destinations', label: 'Destinations' },
-  { path: '/tours?deals_only=true', label: 'Deals' },
   { path: '/about', label: 'About' }
 ]
 

@@ -1,18 +1,21 @@
 package com.vivugo.backend.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vivugo.backend.dto.SeePayWebhookRequest;
 import com.vivugo.backend.service.BookingService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,9 +30,11 @@ public class WebhookController {
     private static final Pattern BOOKING_ID_PREFIX_PATTERN = Pattern.compile("(?i)tbbk");
 
     private final BookingService bookingService;
+    private final ObjectMapper objectMapper;
 
-    public WebhookController(BookingService bookingService) {
+    public WebhookController(BookingService bookingService, ObjectMapper objectMapper) {
         this.bookingService = bookingService;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping(
@@ -56,9 +61,27 @@ public class WebhookController {
         return processSeepayWebhook(webhookData);
     }
 
+    @PostMapping(
+            value = {"/seepay", "/sepay"},
+            consumes = {MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE}
+    )
+    public ResponseEntity<Map<String, Object>> handleSeepayRawWebhook(@RequestBody(required = false) byte[] body) {
+        return processSeepayWebhook(fromRawBody(body));
+    }
+
     private ResponseEntity<Map<String, Object>> processSeepayWebhook(SeePayWebhookRequest webhookData) {
         try {
-            if (!"in".equalsIgnoreCase(webhookData.getTransferType())) {
+            if (webhookData == null) {
+                return successResponse();
+            }
+
+            String transferType = firstNonBlank(webhookData.getTransferType());
+            if (transferType != null && !"in".equalsIgnoreCase(transferType)) {
+                return successResponse();
+            }
+            if (transferType == null
+                    && (webhookData.getTransferAmount() == null
+                    || webhookData.getTransferAmount().compareTo(BigDecimal.ZERO) <= 0)) {
                 return successResponse();
             }
 
@@ -111,6 +134,27 @@ public class WebhookController {
         request.setReferenceCode(firstNonBlank(formData.getFirst("referenceCode"), formData.getFirst("reference_code")));
         request.setDescription(firstNonBlank(formData.getFirst("description")));
         return request;
+    }
+
+    private SeePayWebhookRequest fromRawBody(byte[] body) {
+        String raw = body == null ? "" : new String(body, StandardCharsets.UTF_8).trim();
+        if (raw.isBlank()) {
+            return new SeePayWebhookRequest();
+        }
+
+        try {
+            if (raw.startsWith("{")) {
+                return objectMapper.readValue(raw, SeePayWebhookRequest.class);
+            }
+        } catch (Exception e) {
+            System.out.println("SePay raw JSON parse failed: " + e.getMessage());
+        }
+
+        MultiValueMap<String, String> formData = UriComponentsBuilder
+                .fromUriString("?" + raw)
+                .build()
+                .getQueryParams();
+        return fromFormData(formData);
     }
 
     private Long parseLong(String value) {
