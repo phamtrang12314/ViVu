@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, String>, JpaSpecificationExecutor<Booking> {
 
@@ -28,8 +29,18 @@ public interface BookingRepository extends JpaRepository<Booking, String>, JpaSp
     @Query("SELECT SUM(b.totalPrice) FROM Booking b WHERE b.user.userID = :userId")
     Double sumTotalAmountByUser(@Param("userId") String userId);
 
-    @EntityGraph(attributePaths = {"tour"})
+    @EntityGraph(attributePaths = {"tour", "invoice", "invoice.payments"})
     List<Booking> findAllByUser_userID(String userId);
+
+    @Query("""
+            SELECT DISTINCT b FROM Booking b
+            LEFT JOIN FETCH b.invoice i
+            LEFT JOIN FETCH i.payments
+            LEFT JOIN FETCH b.tour
+            LEFT JOIN FETCH b.user
+            WHERE b.bookingID = :bookingId
+            """)
+    Optional<Booking> findByIdWithPaymentDetails(@Param("bookingId") String bookingId);
 
     // Thống kê số lượng theo từng trạng thái
     @Query("SELECT b.status, COUNT(b) FROM Booking b GROUP BY b.status")

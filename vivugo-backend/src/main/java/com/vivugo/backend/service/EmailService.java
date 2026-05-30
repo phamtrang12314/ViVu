@@ -152,7 +152,7 @@ public class EmailService {
     }
 
     public boolean hasMailCredentials() {
-        if (hasHttpMailProvider()) {
+        if (hasHttpMailProvider() && fromEmail() != null) {
             return true;
         }
 
@@ -435,7 +435,7 @@ public class EmailService {
     private String buildGmailRawMessage(String toEmail, String subject, String text, String html) {
         try {
             MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
-            message.setFrom(new InternetAddress(fromEmail(), fromName(), "UTF-8"));
+            message.setFrom(new InternetAddress(requireFromEmail(), fromName(), "UTF-8"));
             message.setRecipients(MimeMessage.RecipientType.TO, InternetAddress.parse(toEmail));
             message.setSubject(subject, "UTF-8");
             message.setContent(html != null ? html : text.replace("\n", "<br/>"), "text/html; charset=UTF-8");
@@ -449,27 +449,29 @@ public class EmailService {
     }
 
     private void sendBrevoEmail(String apiKey, String toEmail, String subject, String text, String html) {
+        String textContent = (text != null && !text.isBlank()) ? text : plainTextFromHtml(html);
         String body = "{"
-                + "\"sender\":{\"name\":\"" + json(fromName()) + "\",\"email\":\"" + json(fromEmail()) + "\"},"
+                + "\"sender\":{\"name\":\"" + json(fromName()) + "\",\"email\":\"" + json(requireFromEmail()) + "\"},"
                 + "\"to\":[{\"email\":\"" + json(toEmail) + "\"}],"
                 + "\"subject\":\"" + json(subject) + "\","
-                + "\"textContent\":\"" + json(text) + "\","
-                + "\"htmlContent\":\"" + json(html != null ? html : text.replace("\n", "<br/>")) + "\""
+                + "\"textContent\":\"" + json(textContent) + "\","
+                + "\"htmlContent\":\"" + json(html != null ? html : textContent.replace("\n", "<br/>")) + "\""
                 + "}";
         postEmailJson("https://api.brevo.com/v3/smtp/email", body, "api-key", apiKey);
     }
 
     private void sendResendEmail(String apiKey, String toEmail, String subject, String text, String html) {
+        String textContent = (text != null && !text.isBlank()) ? text : plainTextFromHtml(html);
         String from = firstNonBlank(
                 environment.getProperty("RESEND_FROM"),
-                fromName() + " <" + fromEmail() + ">"
+                fromName() + " <" + requireFromEmail() + ">"
         );
         String body = "{"
                 + "\"from\":\"" + json(from) + "\","
                 + "\"to\":[\"" + json(toEmail) + "\"],"
                 + "\"subject\":\"" + json(subject) + "\","
-                + "\"text\":\"" + json(text) + "\","
-                + "\"html\":\"" + json(html != null ? html : text.replace("\n", "<br/>")) + "\""
+                + "\"text\":\"" + json(textContent) + "\","
+                + "\"html\":\"" + json(html != null ? html : textContent.replace("\n", "<br/>")) + "\""
                 + "}";
         postEmailJson("https://api.resend.com/emails", body, "Authorization", "Bearer " + apiKey);
     }
@@ -573,6 +575,30 @@ public class EmailService {
         return message;
     }
 
+    private String plainTextFromHtml(String html) {
+        if (html == null || html.isBlank()) {
+            return "";
+        }
+        return html
+                .replaceAll("(?i)</p>", "\n")
+                .replaceAll("(?i)</li>", "\n")
+                .replaceAll("(?i)<br\\s*/?>", "\n")
+                .replaceAll("<[^>]+>", "")
+                .replace("&nbsp;", " ")
+                .replaceAll("\\n{3,}", "\n\n")
+                .trim();
+    }
+
+    private String requireFromEmail() {
+        String fromEmail = fromEmail();
+        if (fromEmail == null || fromEmail.isBlank()) {
+            throw new IllegalStateException(
+                    "Missing sender email. Set MAIL_FROM_EMAIL to a verified sender address."
+            );
+        }
+        return fromEmail;
+    }
+
     @Async
     public void sendPaymentSuccessEmail(PaymentSuccessEmailData data) {
         try {
@@ -616,30 +642,32 @@ public class EmailService {
                     policyUrl
             );
 
-            if (sendViaHttpProvider(
-                    data.getToEmail(),
-                    String.format("Xác nhận thanh toán thành công - Mã đơn: %s", data.getBookingId()),
-                    "",
-                    htmlContent
-            )) {
+            String subject = String.format("Xác nhận thanh toán thành công - Mã đơn: %s", data.getBookingId());
+            String textContent = plainTextFromHtml(htmlContent);
+
+            if (sendViaHttpProvider(data.getToEmail(), subject, textContent, htmlContent)) {
                 System.out.println("Payment success email sent via HTTP provider to: " + data.getToEmail());
                 return;
             }
 
-            JavaMailSenderImpl sender = gmailSenders().get(0);
+            List<JavaMailSenderImpl> senders = gmailSenders();
+            if (senders.isEmpty()) {
+                throw new IllegalStateException("No mail provider configured for payment success email.");
+            }
+            JavaMailSenderImpl sender = senders.get(0);
             MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(sender.getUsername(), SENDER_DISPLAY_NAME);
             helper.setTo(data.getToEmail());
-            helper.setSubject(String.format("Xác nhận thanh toán thành công - Mã đơn: %s", data.getBookingId()));
-            helper.setText(htmlContent, true); // true để bật chế độ HTML
+            helper.setSubject(subject);
+            helper.setText(textContent, htmlContent);
 
             sender.send(message);
             System.out.println("Payment success email sent to: " + data.getToEmail());
 
         } catch (Exception e) {
-            System.err.println("Failed to send payment email: " + e.getMessage());
+            System.err.println("Failed to send payment email: " + mailFailureMessage(e));
             e.printStackTrace();
         }
     }
@@ -682,32 +710,31 @@ public class EmailService {
                     formattedAmount
             );
 
-            if (sendViaHttpProvider(
-                    data.getToEmail(),
-                    String.format("Xác nhận hủy đơn đặt tour - Mã đơn: %s", data.getBookingId()),
-                    "",
-                    htmlContent
-            )) {
+            String subject = String.format("Xác nhận hủy đơn đặt tour - Mã đơn: %s", data.getBookingId());
+            String textContent = plainTextFromHtml(htmlContent);
+
+            if (sendViaHttpProvider(data.getToEmail(), subject, textContent, htmlContent)) {
                 System.out.println("Booking canceled email sent via HTTP provider to: " + data.getToEmail());
                 return;
             }
 
-            JavaMailSenderImpl sender = gmailSenders().get(0);
+            List<JavaMailSenderImpl> senders = gmailSenders();
+            if (senders.isEmpty()) {
+                throw new IllegalStateException("No mail provider configured for booking canceled email.");
+            }
+            JavaMailSenderImpl sender = senders.get(0);
             MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(sender.getUsername(), SENDER_DISPLAY_NAME);
             helper.setTo(data.getToEmail());
-            helper.setSubject(String.format(
-                    "Xác nhận hủy đơn đặt tour - Mã đơn: %s",
-                    data.getBookingId()
-            ));
-            helper.setText(htmlContent, true);
+            helper.setSubject(subject);
+            helper.setText(textContent, htmlContent);
             sender.send(message);
             System.out.println("Booking canceled email sent to: " + data.getToEmail());
 
         } catch (Exception e) {
-            System.err.println("Failed to send booking canceled email: " + e.getMessage());
+            System.err.println("Failed to send booking canceled email: " + mailFailureMessage(e));
             e.printStackTrace();
         }
     }

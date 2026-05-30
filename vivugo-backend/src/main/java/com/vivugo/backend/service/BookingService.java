@@ -113,7 +113,7 @@ public class BookingService {
 
     // Helper: Lấy Booking theo ID
     public Booking getBookingById(String bookingID) {
-        return bookingRepository.findById(bookingID)
+        return bookingRepository.findByIdWithPaymentDetails(bookingID)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
     }
 
@@ -129,6 +129,8 @@ public class BookingService {
         BigDecimal expectedAmount = BigDecimal.valueOf(booking.getFinalAmount() == null ? 0.0 : booking.getFinalAmount());
 
         if (paidAmount.compareTo(expectedAmount) < 0) {
+            System.out.println("Payment amount mismatch for booking " + bookingId
+                    + ": paid=" + paidAmount + ", expected=" + expectedAmount);
             throw new IllegalArgumentException("So tien chuyen khoan chua du cho booking " + bookingId);
         }
 
@@ -171,6 +173,11 @@ public class BookingService {
 
             // Set trạng thái cho Payment (Giao dịch thành công)
             payment.setStatus(PaymentStatus.SUCCESS);
+
+            if (invoice.getPayments() == null) {
+                invoice.setPayments(new HashSet<>());
+            }
+            invoice.getPayments().add(payment);
 
             // Lưu Payment
             paymentRepository.save(payment);

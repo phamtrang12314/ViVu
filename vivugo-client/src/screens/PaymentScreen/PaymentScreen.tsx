@@ -12,15 +12,19 @@ export default function PaymentScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [timeLeft, setTimeLeft] = useState<number>(0)
-  const [isExpired, setIsExpired] = useState(false)
 
   const { data: bookingData, isLoading } = useQuery({
     queryKey: ['booking', id],
     queryFn: () => bookingApi.getBookingById(id as string),
-    enabled: !!id && !isExpired,
+    enabled: !!id,
     refetchInterval: (query) => {
       const booking = query.state.data?.data
-      if (!booking || booking.status === 'CANCELED' || booking.status === 'CONFIRMED' || booking.paymentStatus === 'SUCCESS' || isExpired) {
+      if (
+        !booking ||
+        booking.status === 'CANCELED' ||
+        booking.status === 'CONFIRMED' ||
+        booking.paymentStatus === 'SUCCESS'
+      ) {
         return false
       }
       return 3000
@@ -29,31 +33,27 @@ export default function PaymentScreen() {
 
   const booking = bookingData?.data
   const isPaid = booking?.status === 'CONFIRMED' || booking?.paymentStatus === 'SUCCESS'
+  const serverTimeoutSeconds = booking?.paymentTimeoutSeconds ?? PAYMENT_TIMEOUT_MINUTES * 60
 
   useEffect(() => {
     if (!booking || isPaid) return
 
-    const initialSeconds = Math.max(0, booking.paymentTimeoutSeconds ?? PAYMENT_TIMEOUT_MINUTES * 60)
+    const initialSeconds = Math.max(0, serverTimeoutSeconds)
     const expireTime = Date.now() + initialSeconds * 1000
     setTimeLeft(initialSeconds)
-    setIsExpired(initialSeconds <= 0)
 
     const interval = window.setInterval(() => {
-      const now = Date.now()
-      const distance = Math.floor((expireTime - now) / 1000)
-
+      const distance = Math.floor((expireTime - Date.now()) / 1000)
       if (distance <= 0) {
         setTimeLeft(0)
-        setIsExpired(true)
         window.clearInterval(interval)
         return
       }
-
       setTimeLeft(distance)
     }, 1000)
 
     return () => window.clearInterval(interval)
-  }, [booking?.bookingID, booking?.paymentTimeoutSeconds, isPaid])
+  }, [booking?.bookingID, serverTimeoutSeconds, isPaid])
 
   const transferContent = booking?.paymentCode || booking?.bookingID.replace(/-/g, '') || ''
   const qrUrl = useMemo(() => {
@@ -84,7 +84,31 @@ export default function PaymentScreen() {
     )
   }
 
-  if (!booking || isExpired || booking.status === 'CANCELED') {
+  if (isPaid) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle className="h-12 w-12 text-green-600" />
+          </div>
+          <h2 className="mb-2 text-2xl font-bold text-gray-800">Thanh toán thành công</h2>
+          <p className="mb-6 text-gray-600">
+            Cảm ơn bạn đã đặt tour. Mã đơn hàng <b>{booking?.bookingID}</b> đã được ghi nhận là đã thanh toán.
+          </p>
+          <div className="grid gap-3">
+            <Button onClick={() => navigate('/account/historyTour')} className="w-full">
+              <History className="mr-2" size={18} /> Xem tour đã đặt
+            </Button>
+            <Button onClick={() => navigate('/')} variant="outline" className="w-full">
+              <Home className="mr-2" size={18} /> Về trang chủ
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!booking || booking.status === 'CANCELED') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
@@ -98,30 +122,6 @@ export default function PaymentScreen() {
           <Button onClick={() => navigate('/account/historyTour')} className="w-full bg-gray-700 hover:bg-gray-800">
             <History className="mr-2" size={18} /> Về lịch sử đặt tour
           </Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (isPaid) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle className="h-12 w-12 text-green-600" />
-          </div>
-          <h2 className="mb-2 text-2xl font-bold text-gray-800">Thanh toán thành công</h2>
-          <p className="mb-6 text-gray-600">
-            Cảm ơn bạn đã đặt tour. Mã đơn hàng <b>{booking.bookingID}</b> đã được ghi nhận là đã thanh toán.
-          </p>
-          <div className="grid gap-3">
-            <Button onClick={() => navigate('/account/historyTour')} className="w-full">
-              <History className="mr-2" size={18} /> Xem tour đã đặt
-            </Button>
-            <Button onClick={() => navigate('/')} variant="outline" className="w-full">
-              <Home className="mr-2" size={18} /> Về trang chủ
-            </Button>
-          </div>
         </div>
       </div>
     )
@@ -151,6 +151,11 @@ export default function PaymentScreen() {
               <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-center">
                 <p className="mb-1 font-medium text-red-700">Vui lòng thanh toán trong vòng</p>
                 <div className="text-4xl font-bold text-red-600">{formatTime(timeLeft)}</div>
+                {(timeLeft <= 0 || serverTimeoutSeconds <= 0) && (
+                  <p className="mt-2 text-sm text-red-600">
+                    Đang chờ xác nhận từ ngân hàng. Vui lòng không đóng trang này.
+                  </p>
+                )}
               </div>
 
               <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4">
