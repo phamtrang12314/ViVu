@@ -321,15 +321,12 @@ public class EmailService {
     }
 
     private boolean sendViaHttpProvider(String toEmail, String subject, String text, String html) {
-        RuntimeException lastError = null;
-
         if (hasGmailApiProvider()) {
             try {
                 sendGmailApiEmail(toEmail, subject, text, html);
                 return true;
             } catch (RuntimeException e) {
-                lastError = e;
-                System.err.println("Gmail API email provider failed: " + e.getMessage());
+                System.err.println("Gmail API email provider failed, trying next mail provider: " + e.getMessage());
             }
         }
 
@@ -342,8 +339,7 @@ public class EmailService {
                 sendBrevoEmail(brevoApiKey, toEmail, subject, text, html);
                 return true;
             } catch (RuntimeException e) {
-                lastError = e;
-                System.err.println("Brevo email provider failed: " + e.getMessage());
+                System.err.println("Brevo email provider failed, trying next mail provider: " + e.getMessage());
             }
         }
 
@@ -353,14 +349,10 @@ public class EmailService {
                 sendResendEmail(resendApiKey, toEmail, subject, text, html);
                 return true;
             } catch (RuntimeException e) {
-                lastError = e;
-                System.err.println("Resend email provider failed: " + e.getMessage());
+                System.err.println("Resend email provider failed, trying SMTP fallback: " + e.getMessage());
             }
         }
 
-        if (lastError != null) {
-            throw lastError;
-        }
         return false;
     }
 
