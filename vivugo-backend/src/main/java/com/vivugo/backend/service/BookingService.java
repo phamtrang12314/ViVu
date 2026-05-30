@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 @Service
 public class BookingService {
 
-    private static final long PAYMENT_TIMEOUT_MINUTES = 15;
+    private static final long PAYMENT_TIMEOUT_MINUTES = 30;
 
     private final TourRepository tourRepository;
     private final BookingRepository bookingRepository;
@@ -231,6 +232,20 @@ public class BookingService {
                 .max(Comparator.comparing(Payment::getPaymentDate))
                 .map(Payment::getStatus)
                 .orElse(PaymentStatus.PENDING);
+    }
+
+    public long getPaymentSecondsRemaining(Booking booking) {
+        if (booking == null || resolvePaymentStatus(booking) == PaymentStatus.SUCCESS) {
+            return 0;
+        }
+
+        if (booking.getBookingDate() == null) {
+            return PAYMENT_TIMEOUT_MINUTES * 60;
+        }
+
+        LocalDateTime expiresAt = booking.getBookingDate().plusMinutes(PAYMENT_TIMEOUT_MINUTES);
+        long remaining = Duration.between(LocalDateTime.now(), expiresAt).getSeconds();
+        return Math.max(0, remaining);
     }
 
     @Transactional
