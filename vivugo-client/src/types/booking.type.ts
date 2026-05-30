@@ -46,11 +46,13 @@ export type RefundStatus = "PENDING" | "REFUNDED";
 
 export interface BookingDetail {
     bookingID: string;
+    paymentCode?: string;
     tourName: string;
     finalAmount: number;
     status: BookingStatus;
     paymentStatus: PaymentStatus;
     bookingDate: string;
+    paymentTimeoutSeconds?: number;
     numAdults: number;
     numChildren: number;
     customerName: string;

@@ -58,10 +58,12 @@ public class BookingController {
             // hoặc lỗi Lazy Loading của Hibernate khi trả về JSON
             Map<String, Object> response = new HashMap<>();
             response.put("bookingID", booking.getBookingID());
+            response.put("paymentCode", booking.getBookingID().replace("-", ""));
             response.put("tourName", booking.getTour().getTitle());
             response.put("finalAmount", booking.getFinalAmount());
             response.put("status", booking.getStatus());
             response.put("paymentStatus", bookingService.resolvePaymentStatus(booking));
+            response.put("paymentTimeoutSeconds", bookingService.getPaymentSecondsRemaining(booking));
             response.put("bookingDate", booking.getBookingDate());
             response.put("numAdults", booking.getNumAdults());
             response.put("numChildren", booking.getNumChildren());
@@ -90,8 +92,12 @@ public class BookingController {
 
     @PutMapping("/{id}/cancel-request")
     public ResponseEntity<?> requestCancel(@PathVariable String id) {
-        bookingService.requestCancelBooking(id);
-        return ResponseEntity.ok("Đã gửi yêu cầu hủy thành công");
+        try {
+            bookingService.requestCancelBooking(id);
+            return ResponseEntity.ok(Map.of("message", "Đã cập nhật yêu cầu hủy tour thành công"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
 }

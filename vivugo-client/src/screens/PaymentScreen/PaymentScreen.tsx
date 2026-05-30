@@ -6,7 +6,7 @@ import { bookingApi } from '../../apis/booking.api'
 import { formatCurrency } from '../../utils/utils'
 import Button from '../../components/Button'
 
-const PAYMENT_TIMEOUT_MINUTES = 15
+const PAYMENT_TIMEOUT_MINUTES = 30
 
 export default function PaymentScreen() {
   const { id } = useParams()
@@ -33,8 +33,10 @@ export default function PaymentScreen() {
   useEffect(() => {
     if (!booking || isPaid) return
 
-    const bookingTime = new Date(booking.bookingDate).getTime()
-    const expireTime = bookingTime + PAYMENT_TIMEOUT_MINUTES * 60 * 1000
+    const initialSeconds = Math.max(0, booking.paymentTimeoutSeconds ?? PAYMENT_TIMEOUT_MINUTES * 60)
+    const expireTime = Date.now() + initialSeconds * 1000
+    setTimeLeft(initialSeconds)
+    setIsExpired(initialSeconds <= 0)
 
     const interval = window.setInterval(() => {
       const now = Date.now()
@@ -51,9 +53,9 @@ export default function PaymentScreen() {
     }, 1000)
 
     return () => window.clearInterval(interval)
-  }, [booking, isPaid])
+  }, [booking?.bookingID, booking?.paymentTimeoutSeconds, isPaid])
 
-  const transferContent = booking?.bookingID || ''
+  const transferContent = booking?.paymentCode || booking?.bookingID.replace(/-/g, '') || ''
   const qrUrl = useMemo(() => {
     if (!booking) return ''
     const bankId = 'MB'
@@ -89,12 +91,12 @@ export default function PaymentScreen() {
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
             <TimerReset className="h-12 w-12 text-red-600" />
           </div>
-          <h2 className="mb-2 text-2xl font-bold text-gray-800">Đơn hàng đã hết hạn</h2>
+          <h2 className="mb-2 text-2xl font-bold text-gray-800">Đơn hàng đã hết hạn thanh toán</h2>
           <p className="mb-6 text-gray-600">
-            Thời gian thanh toán {PAYMENT_TIMEOUT_MINUTES} phút đã kết thúc. Vui lòng đặt lại tour để tạo mã thanh toán mới.
+            Thời gian thanh toán đã kết thúc. Bạn có thể quay lại lịch sử đặt tour để kiểm tra trạng thái đơn.
           </p>
-          <Button onClick={() => navigate('/')} className="w-full bg-gray-700 hover:bg-gray-800">
-            <Home className="mr-2" size={18} /> Về trang chủ
+          <Button onClick={() => navigate('/account/historyTour')} className="w-full bg-gray-700 hover:bg-gray-800">
+            <History className="mr-2" size={18} /> Về lịch sử đặt tour
           </Button>
         </div>
       </div>
