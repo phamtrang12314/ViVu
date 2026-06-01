@@ -43,6 +43,8 @@ import java.util.Set;
 @Service
 public class TourAdminService {
 
+    private static final double MIN_TOUR_PRICE = 10_000.0;
+
     private final TourRepository tourRepository;
     private final TourTypeRepository tourTypeRepository;
     private final DestinationRepository destinationRepository;
@@ -187,6 +189,8 @@ public class TourAdminService {
     }
 
     private void applyCommonFields(Tour tour, TourRequest dto) {
+        validateTourPrices(dto);
+
         tour.setTitle(dto.getTitle() == null ? "" : dto.getTitle().trim());
         tour.setDescription(dto.getDescription() == null ? "" : dto.getDescription().trim());
         tour.setDurationDays(dto.getDurationDays());
@@ -196,11 +200,21 @@ public class TourAdminService {
         tour.setMinParticipants(dto.getMinGuests());
         tour.setMaxParticipants(dto.getMaxGuests());
         tour.setImageURL(dto.getImageURL());
+        tour.setReviewVideoUrl(dto.getReviewVideoUrl() == null ? null : dto.getReviewVideoUrl().trim());
         tour.setStatus(TourStatus.valueOf(dto.getStatus().toUpperCase(Locale.ROOT)));
 
         TourType tourType = tourTypeRepository.findById(dto.getTourTypeId())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid tourTypeId"));
         tour.setTourType(tourType);
+    }
+
+    private void validateTourPrices(TourRequest dto) {
+        if (dto.getPriceAdult() == null || dto.getPriceAdult() < MIN_TOUR_PRICE) {
+            throw new IllegalArgumentException("Adult price must be at least 10000 VND");
+        }
+        if (dto.getPriceChild() == null || dto.getPriceChild() < MIN_TOUR_PRICE) {
+            throw new IllegalArgumentException("Child price must be at least 10000 VND");
+        }
     }
 
     private void syncDestinations(Tour tour, List<String> destinationIds) {
@@ -211,6 +225,7 @@ public class TourAdminService {
         }
 
         String firstDestinationName = null;
+        String selectedRegion = null;
         if (destinationIds != null) {
             for (String destinationId : destinationIds) {
                 if (destinationId == null || destinationId.isBlank()) {
@@ -218,6 +233,15 @@ public class TourAdminService {
                 }
                 Destination destination = destinationRepository.findById(destinationId)
                         .orElseThrow(() -> new IllegalArgumentException("Invalid destinationId: " + destinationId));
+                String destinationRegion = normalizeRegion(destination.getRegion());
+                if (destinationRegion.isBlank()) {
+                    throw new IllegalArgumentException("Destination region is required: " + destinationId);
+                }
+                if (selectedRegion == null) {
+                    selectedRegion = destinationRegion;
+                } else if (!selectedRegion.equals(destinationRegion)) {
+                    throw new IllegalArgumentException("All selected destinations must belong to the same region");
+                }
 
                 if (firstDestinationName == null) {
                     firstDestinationName = destination.getNameDes();
@@ -229,7 +253,14 @@ public class TourAdminService {
                 tour.getTourDestinations().add(td);
             }
         }
+        if (tour.getTourDestinations().isEmpty()) {
+            throw new IllegalArgumentException("At least one destination is required");
+        }
         tour.setDeparturePlace(firstDestinationName);
+    }
+
+    private String normalizeRegion(String region) {
+        return region == null ? "" : region.trim().toLowerCase(Locale.ROOT);
     }
 
     private void syncPromotions(Tour tour, List<String> promotionIds) {

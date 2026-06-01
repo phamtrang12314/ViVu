@@ -75,6 +75,12 @@ public class PromotionAdminController {
         return ResponseEntity.ok(detail);
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePromotion(@PathVariable String id) {
+        promotionAdminService.deletePromotion(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/simple")
     public ResponseEntity<List<PromotionSimpleResponse>> getSimple() {
         return ResponseEntity.ok(promotionAdminService.getActivePromotionsSimple());

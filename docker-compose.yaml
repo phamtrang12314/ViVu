@@ -1,24 +1,6 @@
 name: vivugo
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: vivugo-postgres
-    environment:
-      POSTGRES_DB: vivugo_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123
-    ports:
-      - "5432:5432"
-    volumes:
-      - vivugo-postgres-data:/var/lib/postgresql/data
-      - ./vivugo-backend/src/main/resources/db:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d vivugo_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: vivugo-redis
@@ -31,16 +13,17 @@ services:
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/vivugo_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: 123
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-aws}
+      DB_URL: ${DB_URL:?DB_URL must be the AWS RDS PostgreSQL JDBC URL}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      SPRING_CACHE_TYPE: ${SPRING_CACHE_TYPE:-redis}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      MANAGEMENT_HEALTH_REDIS_ENABLED: "true"
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-your_email@gmail.com}
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-your_app_password}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_started
 
@@ -59,6 +42,3 @@ services:
       - "5174:80"
     depends_on:
       - backend
-
-volumes:
-  vivugo-postgres-data:

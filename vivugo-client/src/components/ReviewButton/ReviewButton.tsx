@@ -13,6 +13,7 @@ interface ReviewButtonProps {
 export const ReviewButton = ({ tourId, tourTitle, status }: ReviewButtonProps) => {
   const { isAuthenticated } = useContext(AppContext)
   const [showModal, setShowModal] = useState(false)
+  const canUseReviewFlow = status === 'COMPLETED' || status === 'CONFIRMED'
 
   const {
     data: reviewedData,
@@ -21,18 +22,18 @@ export const ReviewButton = ({ tourId, tourTitle, status }: ReviewButtonProps) =
   } = useQuery({
     queryKey: ['hasReviewed', tourId],
     queryFn: () => reviewApi.hasReviewed(tourId),
-    enabled: isAuthenticated && status === 'COMPLETED',
+    enabled: isAuthenticated && canUseReviewFlow,
     staleTime: 5000
   })
 
   const isReviewed = reviewedData?.data === true
-  const canReview = status === 'COMPLETED' && !isReviewed
+  const canReview = canUseReviewFlow && !isReviewed
 
   const handleSuccess = useCallback(() => {
     refetch()
   }, [refetch])
 
-  if (!isAuthenticated || status !== 'COMPLETED') {
+  if (!isAuthenticated || !canUseReviewFlow) {
     return null
   }
 

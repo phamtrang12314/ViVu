@@ -22,15 +22,18 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final ApiRateLimitFilter apiRateLimitFilter;
     private final JwtAuthFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
     private final String allowedOriginPatterns;
 
     public SecurityConfig(
+            ApiRateLimitFilter apiRateLimitFilter,
             JwtAuthFilter jwtAuthFilter,
             AuthenticationProvider authenticationProvider,
             @Value("${app.cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}") String allowedOriginPatterns
     ) {
+        this.apiRateLimitFilter = apiRateLimitFilter;
         this.jwtAuthFilter = jwtAuthFilter;
         this.authenticationProvider = authenticationProvider;
         this.allowedOriginPatterns = allowedOriginPatterns;
@@ -66,6 +69,7 @@ public class SecurityConfig {
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
+                .addFilterBefore(apiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
 
@@ -79,14 +83,18 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/auth/**", "/api/ai/chat").permitAll()
 
-                        .requestMatchers("/api/tours", "/api/tours/**", "/api/destinations/**", "/api/tour-types/**").permitAll()
-                        .requestMatchers("/api/reviews/**").permitAll()
+                        .requestMatchers("/api/tours", "/api/tours/**", "/api/recommendations/**", "/api/destinations/**", "/api/tour-types/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/tour/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/tour/*/reviewed").hasRole(RoleType.CUSTOMER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/reviews").hasRole(RoleType.CUSTOMER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/reviews/media").hasRole(RoleType.CUSTOMER.name())
                         .requestMatchers("/api/webhooks/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/bookings/*").permitAll()
                         .requestMatchers("/images/**").permitAll()
                         .requestMatchers("/api/contact-messages").permitAll()
+                        .requestMatchers("/api/contact-messages/chat/**").permitAll()
 
-                        .requestMatchers("/api/admin/**", "/api/admin/tours/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole(RoleType.ADMIN.name())
                         .requestMatchers("/", "/api", "/api/health", "/actuator/health", "/error").permitAll()
 
                         .anyRequest().authenticated()

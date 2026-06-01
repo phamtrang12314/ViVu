@@ -6,6 +6,7 @@ import React, { useState, useMemo } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
+  Eye,
   Edit2,
   PlusCircle,
   Tag,
@@ -14,9 +15,11 @@ import {
   Gift,
   CheckCircle,
   Ban,
-  PauseCircle
+  PauseCircle,
+  Trash2
 } from 'lucide-react'
 import { omitBy, isUndefined } from 'lodash'
+import { useNavigate } from 'react-router-dom'
 import { promotionAdminApi } from '../../apis/promotionAdmin.api'
 import type { PromotionAdmin, PromotionListAdminParams } from '../../types/promotionAdmin'
 import { formatCurrency } from '../../../utils/utils'
@@ -146,6 +149,7 @@ const calculateDisplayStatus = (promotion: PromotionAdmin): string => {
 
 export default function ManagePromotionScreen() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const queryParams = parseSearchParams(searchParams)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -254,6 +258,23 @@ export default function ManagePromotionScreen() {
   const handleEdit = (id: string) => {
     setEditingPromotionId(id)
     setIsModalOpen(true)
+  }
+
+  const handleDetail = (id: string) => {
+    navigate(`/admin/promotions/detail/${id}`)
+  }
+
+  const handleDelete = async (id: string) => {
+    const confirmed = window.confirm('Bạn chắc chắn muốn xóa khuyến mãi này?')
+    if (!confirmed) return
+
+    try {
+      await promotionAdminApi.deletePromotion(id)
+      refetch()
+      refetchStats()
+    } catch {
+      window.alert('Xóa khuyến mãi thất bại.')
+    }
   }
 
   const handleCloseModal = (shouldRefetch: boolean = false) => {
@@ -455,11 +476,25 @@ export default function ManagePromotionScreen() {
                     <td className="px-5 py-4 text-center text-sm">
                       <div className="inline-flex gap-2">
                         <button
+                          onClick={() => handleDetail(promotion.promotionID)}
+                          className="border border-gray-400 text-gray-600 rounded-lg p-2 hover:bg-gray-50"
+                          aria-label="Xem chi tiết"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
                           onClick={() => handleEdit(promotion.promotionID)}
                           className="border border-blue-500 text-blue-500 rounded-lg p-2 hover:bg-blue-50"
                           aria-label="Chỉnh sửa"
                         >
                           <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(promotion.promotionID)}
+                          className="border border-red-500 text-red-500 rounded-lg p-2 hover:bg-red-50"
+                          aria-label="Xóa"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>

@@ -6,6 +6,7 @@ interface CreateReviewBody {
   tourId: string;
   rating: number;
   comment: string;
+  videoUrl?: string;
 }
 
 export const reviewApi = {
@@ -23,6 +24,16 @@ export const reviewApi = {
 
   createReview: (body: CreateReviewBody) => {
     return http.post<string>(`reviews`, body);
+  },
+
+  uploadReviewMedia: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return http.post<{ url: string }>(`reviews/media`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
 
   hasReviewed: (tourId: string) => {

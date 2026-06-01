@@ -1,52 +1,57 @@
-// File: src/main/java/com/tripbee/backend/service/ContactMessageService.java
-
 package com.vivugo.backend.service;
 
 import com.vivugo.backend.dto.ContactMessageRequest;
-import com.vivugo.backend.model.Account; // Import Account
+import com.vivugo.backend.dto.support.SupportChatStartRequest;
+import com.vivugo.backend.dto.support.SupportConversationResponse;
+import com.vivugo.backend.model.Account;
 import com.vivugo.backend.model.ContactMessage;
-import com.vivugo.backend.model.User; // Import User
+import com.vivugo.backend.model.SupportConversation;
+import com.vivugo.backend.model.User;
 import com.vivugo.backend.repository.ContactMessageRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.vivugo.backend.repository.SupportConversationRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-
 @Service
+@RequiredArgsConstructor
 public class ContactMessageService {
 
-    @Autowired
-    private ContactMessageRepository contactMessageRepository;
+    private final ContactMessageRepository contactMessageRepository;
+    private final SupportConversationRepository supportConversationRepository;
+    private final SupportChatService supportChatService;
 
-    /**
-     * Lưu tin nhắn liên hệ mới vào cơ sở dữ liệu
-     * @param request Dữ liệu tin nhắn từ Frontend
-     * @param currentUser Tài khoản của người dùng đã đăng nhập (hoặc null) <-- THÊM THAM SỐ
-     * @return ContactMessage entity đã được lưu
-     */
     @Transactional
-    public ContactMessage saveNewContactMessage(ContactMessageRequest request, Account currentUser) { // <-- CẬP NHẬT CHỮ KÝ HÀM
-        // 1. Map DTO sang Entity
+    public ContactMessage saveNewContactMessage(ContactMessageRequest request, Account currentUser) {
         ContactMessage contactMessage = new ContactMessage();
-
         contactMessage.setName(request.getName());
         contactMessage.setSubject(request.getSubject());
-
         contactMessage.setEmail(request.getEmail());
         contactMessage.setPhone(request.getPhone());
         contactMessage.setMessage(request.getMessage());
+        contactMessage.setResponded(false);
 
-        // --- BƯỚC KHẮC PHỤC LỖI TẠI ĐÂY ---
-        if (currentUser != null && currentUser.getUser() != null) {
-            // Lấy đối tượng User từ Account đang đăng nhập
-            User user = currentUser.getUser();
-            // Gán User vào ContactMessage
-            contactMessage.setUser(user); // <-- THÊM DÒNG NÀY
+        User linkedUser = currentUser != null ? currentUser.getUser() : null;
+        if (linkedUser != null) {
+            contactMessage.setUser(linkedUser);
         }
-        // ----------------------------------
 
-        // 2. Lưu vào Database
+        SupportChatStartRequest startRequest = new SupportChatStartRequest();
+        startRequest.setName(request.getName());
+        startRequest.setEmail(request.getEmail());
+        startRequest.setPhone(request.getPhone());
+
+        String initial = request.getSubject() == null || request.getSubject().isBlank()
+                ? request.getMessage()
+                : "[" + request.getSubject().trim() + "] " + request.getMessage();
+        startRequest.setMessage(initial);
+
+        SupportConversationResponse conversationResponse = supportChatService.startConversation(startRequest, currentUser);
+        SupportConversation conversation = supportConversationRepository.findByConversationID(conversationResponse.getConversationId())
+                .orElse(null);
+        contactMessage.setConversation(conversation);
+
         return contactMessageRepository.save(contactMessage);
     }
 }
+

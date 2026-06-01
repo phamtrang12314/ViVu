@@ -3,6 +3,7 @@ package com.vivugo.backend.service;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,6 +36,7 @@ public class TourService {
         this.tourRepository = tourRepository;
     }
 
+    @Cacheable(cacheNames = "tour:active-page")
     public Page<TourSummaryResponse> getAllActiveTours(
             int page, int size, String sort,
             String search, String destinationId, String tourTypeId,
@@ -54,6 +56,7 @@ public class TourService {
         return tourPage.map(TourSummaryResponse::new);
     }
     
+    @Cacheable(cacheNames = "tour:detail", key = "#tourId")
     public TourDetailsResponse getTourDetails(String tourId) {
         // Tìm tour bằng ID, nếu không thấy thì ném lỗi 404
         Tour tour = tourRepository.findById(tourId)
@@ -64,6 +67,7 @@ public class TourService {
         return TourDetailsResponse.build(tour);
     }
 
+    @Cacheable(cacheNames = "tour:trending", key = "#size")
     public List<TourSummaryResponse> getTrendingTours(int size) {
         Pageable pageable = PageRequest.of(0, size, Sort.by(Sort.Direction.ASC, "ranking"));
         Specification<Tour> spec = buildSpecification(
@@ -71,6 +75,7 @@ public class TourService {
         return tourRepository.findAll(spec, pageable).map(TourSummaryResponse::new).getContent();
     }
 
+    @Cacheable(cacheNames = "tour:deals", key = "#size")
     public List<TourSummaryResponse> getDealTours(int size) {
         Pageable pageable = PageRequest.of(0, size, Sort.by(Sort.Direction.DESC, "priceAdult"));
         Specification<Tour> spec = buildSpecification(

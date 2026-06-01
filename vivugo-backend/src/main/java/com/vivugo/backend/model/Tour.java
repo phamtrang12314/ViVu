@@ -28,9 +28,9 @@ public class Tour {
     @Column(nullable = false)
     private LocalDate endDate;
 
-    private int durationDays; // Cải tiến từ 'duration'
+    private int durationDays; // C?i ti?n t? 'duration'
 
-    private int durationNights; // Cải tiến từ 'duration'
+    private int durationNights; // C?i ti?n t? 'duration'
 
     private String departurePlace;
 
@@ -43,7 +43,8 @@ public class Tour {
     private int maxParticipants;
     private int minParticipants;
 
-    private String imageURL; // Ảnh bìa
+    private String imageURL; // Anh bia
+    private String reviewVideoUrl;
 
     @Enumerated(EnumType.STRING)
     private TourStatus status;
@@ -154,6 +155,14 @@ public class Tour {
         this.imageURL = imageURL;
     }
 
+    public String getReviewVideoUrl() {
+        return reviewVideoUrl;
+    }
+
+    public void setReviewVideoUrl(String reviewVideoUrl) {
+        this.reviewVideoUrl = reviewVideoUrl;
+    }
+
     public TourStatus getStatus() {
         return status;
     }
@@ -234,20 +243,20 @@ public class Tour {
         this.tourPromotions = tourPromotions;
     }
 
-    // --- Mối quan hệ ---
+    // --- M?i quan h? ---
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tour_type_id") // Sửa lỗi: Tour phải có tourTypeID
+    @JoinColumn(name = "tour_type_id") // S?a l?i: Tour ph?i có tourTypeID
     private TourType tourType;
 
     @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<TourDestination> tourDestinations = new HashSet<>();
 
     @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<TourImage> tourImages = new HashSet<>(); // Thư viện ảnh
+    private Set<TourImage> tourImages = new HashSet<>(); // Thu vi?n ?nh
 
     @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Itinerary> itineraries = new HashSet<>();  // Lịch trình chi tiết
+    private Set<Itinerary> itineraries = new HashSet<>();  // L?ch trình chi ti?t
 
     @OneToMany(mappedBy = "tour")
     private Set<Booking> bookings = new HashSet<>();
@@ -274,3 +283,5 @@ public class Tour {
         this.openDates = openDates;
     }
 }
+
+

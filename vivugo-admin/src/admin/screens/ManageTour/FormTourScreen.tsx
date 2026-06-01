@@ -45,6 +45,7 @@ type TourForm = {
   maxGuests: number | ''
   status: 'ACTIVE' | 'PAUSE' | 'SOLD_OUT'
   imageURL: string
+  reviewVideoUrl: string
 }
 
 type FormErrors = Partial<Record<keyof TourForm, string>> & {
@@ -72,6 +73,8 @@ const formatVND = (value: number | '') => {
   return Number(value).toLocaleString('vi-VN')
 }
 
+const MIN_TOUR_PRICE = 10000
+
 const CheckboxOption = (props: OptionProps<any, true>) => (
   <components.Option {...props}>
     <div className='flex items-center gap-2'>
@@ -97,10 +100,12 @@ export default function FormTourScreen() {
     minGuests: '',
     maxGuests: '',
     status: 'ACTIVE',
-    imageURL: ''
+    imageURL: '',
+    reviewVideoUrl: ''
   })
 
   const [selectedDestinations, setSelectedDestinations] = useState<DestinationOption[]>([])
+  const [selectedRegion, setSelectedRegion] = useState('')
   const [selectedPromotions, setSelectedPromotions] = useState<PromotionOption[]>([])
   const [openDates, setOpenDates] = useState<string[]>([''])
   const [dayPlans, setDayPlans] = useState<DayPlan[]>([
@@ -146,7 +151,8 @@ export default function FormTourScreen() {
         minGuests: detail.minParticipants ?? '',
         maxGuests: detail.maxParticipants ?? '',
         status: (detail.status as TourForm['status']) || 'ACTIVE',
-        imageURL: detail.imageURL || ''
+        imageURL: detail.imageURL || '',
+        reviewVideoUrl: detail.reviewVideoUrl || ''
       })
 
       const mappedDestinations = (detail.tourDestinations || [])
@@ -157,7 +163,13 @@ export default function FormTourScreen() {
           label: destination!.nameDes,
           region: destination!.region
         }))
-      setSelectedDestinations(mappedDestinations)
+      const initialRegion = mappedDestinations[0]?.region || ''
+      setSelectedRegion(initialRegion)
+      setSelectedDestinations(
+        initialRegion
+          ? mappedDestinations.filter((destination) => destination.region === initialRegion)
+          : mappedDestinations
+      )
 
       const mappedPromotions = (detail.promotions || []).map((promotion) => ({
         value: promotion.promotionID,
@@ -213,7 +225,32 @@ export default function FormTourScreen() {
     [promotionsRaw]
   )
 
+  const regionOptions = useMemo(
+    () =>
+      Array.from(new Set(destinationOptions.map((destination) => destination.region).filter(Boolean))).sort(),
+    [destinationOptions]
+  )
+
+  const filteredDestinationOptions = useMemo(
+    () =>
+      selectedRegion
+        ? destinationOptions.filter((destination) => destination.region === selectedRegion)
+        : [],
+    [destinationOptions, selectedRegion]
+  )
+
   const uniqueDestinationCount = destinationOptions.length
+
+  useEffect(() => {
+    setSelectedDestinations((prev) =>
+      selectedRegion ? prev.filter((destination) => destination.region === selectedRegion) : []
+    )
+  }, [selectedRegion])
+
+  const handleRegionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedRegion(event.target.value)
+    setErrors((prev) => ({ ...prev, destinationIds: undefined, form: undefined }))
+  }
 
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -334,8 +371,12 @@ export default function FormTourScreen() {
     if (!form.tourTypeId) nextErrors.tourTypeId = 'Vui lòng chọn loại tour'
     if (form.durationDays === '' || Number(form.durationDays) <= 0) nextErrors.durationDays = 'Số ngày phải lớn hơn 0'
     if (form.durationNights === '' || Number(form.durationNights) < 0) nextErrors.durationNights = 'Số đêm phải từ 0'
-    if (form.priceAdult === '' || Number(form.priceAdult) <= 0) nextErrors.priceAdult = 'Giá người lớn phải lớn hơn 0'
-    if (form.priceChild === '' || Number(form.priceChild) <= 0) nextErrors.priceChild = 'Giá trẻ em phải lớn hơn 0'
+    if (form.priceAdult === '' || Number(form.priceAdult) < MIN_TOUR_PRICE) {
+      nextErrors.priceAdult = `Giá người lớn phải từ ${MIN_TOUR_PRICE.toLocaleString('vi-VN')} VND`
+    }
+    if (form.priceChild === '' || Number(form.priceChild) < MIN_TOUR_PRICE) {
+      nextErrors.priceChild = `Giá trẻ em phải từ ${MIN_TOUR_PRICE.toLocaleString('vi-VN')} VND`
+    }
     if (form.minGuests === '' || Number(form.minGuests) <= 0) nextErrors.minGuests = 'Số khách tối thiểu phải lớn hơn 0'
     if (form.maxGuests === '' || Number(form.maxGuests) <= 0) nextErrors.maxGuests = 'Số khách tối đa phải lớn hơn 0'
     if (form.minGuests !== '' && form.maxGuests !== '' && Number(form.maxGuests) < Number(form.minGuests)) {
@@ -343,7 +384,11 @@ export default function FormTourScreen() {
     }
     if (!form.imageURL) nextErrors.imageURL = 'Vui lòng chọn ảnh bìa'
     if (galleryImages.length < 2) nextErrors.galleryImages = 'Cần thêm tối thiểu 2 ảnh chi tiết'
-    if (selectedDestinations.length === 0) nextErrors.destinationIds = 'Vui lòng chọn ít nhất 1 địa điểm du lịch'
+    if (!selectedRegion) nextErrors.destinationIds = 'Vui lòng chọn miền trước khi chọn địa điểm'
+    else if (selectedDestinations.length === 0) nextErrors.destinationIds = 'Vui lòng chọn ít nhất 1 địa điểm trong miền đã chọn'
+    else if (selectedDestinations.some((destination) => destination.region !== selectedRegion)) {
+      nextErrors.destinationIds = 'Địa điểm đã chọn phải thuộc đúng miền đã chọn'
+    }
     if (openDates.filter(Boolean).length === 0) nextErrors.openDates = 'Vui lòng thêm ít nhất 1 ngày mở bán'
 
     const hasValidItinerary = dayPlans.every((day) => {
@@ -382,6 +427,7 @@ export default function FormTourScreen() {
       minGuests: Number(form.minGuests),
       maxGuests: Number(form.maxGuests),
       imageURL: form.imageURL,
+      reviewVideoUrl: form.reviewVideoUrl.trim() || null,
       status: form.status,
       tourTypeId: form.tourTypeId,
       destinationIds: selectedDestinations.map((item) => item.value),
@@ -465,6 +511,17 @@ export default function FormTourScreen() {
               onChange={handleChange}
             />
           </div>
+
+          <div>
+            <label className='mb-1 block text-sm font-medium text-gray-600'>Video review tour (tuỳ chọn)</label>
+            <input
+              className={inputBase}
+              name='reviewVideoUrl'
+              value={form.reviewVideoUrl}
+              onChange={handleChange}
+              placeholder='https://... (YouTube, TikTok hoặc link video trực tiếp)'
+            />
+          </div>
         </section>
 
         <section className='space-y-4 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm'>
@@ -531,8 +588,20 @@ export default function FormTourScreen() {
 
         <section className='space-y-4 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm'>
           <h2 className='text-lg font-semibold text-gray-800'>Địa điểm du lịch và khuyến mãi</h2>
-          <p className='text-xs text-gray-500'>Đã có {uniqueDestinationCount} địa điểm trong hệ thống. Có thể chọn nhiều địa điểm cho một tour.</p>
-          <div className='grid grid-cols-1 gap-5 md:grid-cols-2'>
+          <p className='text-xs text-gray-500'>Đã có {uniqueDestinationCount} địa điểm trong hệ thống. Chọn miền trước để chỉ thấy địa điểm thuộc miền đó.</p>
+          <div className='grid grid-cols-1 gap-5 md:grid-cols-3'>
+            <div>
+              <label className='mb-1 block text-sm font-medium text-gray-600'>Miền</label>
+              <select className={inputBase} value={selectedRegion} onChange={handleRegionChange}>
+                <option value=''>Chọn miền</option>
+                {regionOptions.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <label className='mb-1 block text-sm font-medium text-gray-600'>Địa điểm du lịch</label>
               {errors.destinationIds && <p className='mb-1 text-xs text-red-500'>{errors.destinationIds}</p>}
@@ -540,11 +609,16 @@ export default function FormTourScreen() {
                 isMulti
                 closeMenuOnSelect={false}
                 hideSelectedOptions={false}
-                options={destinationOptions}
+                isDisabled={!selectedRegion}
+                options={filteredDestinationOptions}
                 value={selectedDestinations}
-                onChange={(value) => setSelectedDestinations(value as DestinationOption[])}
+                onChange={(value: MultiValue<DestinationOption>) => {
+                  setSelectedDestinations([...value])
+                  setErrors((prev) => ({ ...prev, destinationIds: undefined, form: undefined }))
+                }}
                 components={{ Option: CheckboxOption }}
-                placeholder='Chọn một hoặc nhiều địa điểm'
+                placeholder={selectedRegion ? 'Chọn một hoặc nhiều địa điểm' : 'Chọn miền trước'}
+                noOptionsMessage={() => 'Không có địa điểm trong miền này'}
                 classNamePrefix='react-select'
               />
             </div>

@@ -4,6 +4,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 
 const getMenuFromPath = (path: string): string => {
   if (path.startsWith('/admin/manage-tour') || path.startsWith('/admin/tours')) return 'tour'
+  if (path.startsWith('/admin/revenue')) return 'revenue'
   if (path.startsWith('/admin/promotions')) return 'promotion'
   if (path.startsWith('/admin/manage-destination') || path.startsWith('/admin/destinations'))
     return 'destination'
@@ -24,11 +25,13 @@ export default function AdminScreen() {
   const location = useLocation()
 
   const [activeMenu, setActiveMenu] = useState(getMenuFromPath(location.pathname))
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleMenuChange = (menu: string) => {
     setActiveMenu(menu)
 
     if (menu === 'dashboard') navigate('/admin/dashboard')
+    else if (menu === 'revenue') navigate('/admin/revenue')
     else if (menu === 'tour') navigate('/admin/manage-tour')
     else if (menu === 'destination') navigate('/admin/manage-destination')
     else if (menu === 'promotion') navigate('/admin/promotions')
@@ -49,12 +52,19 @@ export default function AdminScreen() {
     if (currentMenu !== activeMenu) {
       setActiveMenu(currentMenu)
     }
+    setSidebarOpen(false)
   }, [location.pathname, navigate, activeMenu])
 
   return (
-    <div className="flex">
-      <Sidebar activeMenu={activeMenu} setActiveMenu={handleMenuChange} />
-      <div className="flex-1 ml-64 bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar
+        activeMenu={activeMenu}
+        setActiveMenu={handleMenuChange}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onToggle={() => setSidebarOpen((prev) => !prev)}
+      />
+      <div className="lg:ml-64">
         <Outlet />
       </div>
     </div>

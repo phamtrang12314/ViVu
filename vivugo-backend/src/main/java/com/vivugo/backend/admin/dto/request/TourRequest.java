@@ -22,6 +22,7 @@ public class TourRequest {
     private int minGuests;
     private int maxGuests;
     private String imageURL;
+    private String reviewVideoUrl;
     private String status;
     private String tourTypeId;
     private List<String> destinationIds;

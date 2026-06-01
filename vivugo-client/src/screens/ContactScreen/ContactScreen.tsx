@@ -4,6 +4,11 @@ import { FaMapMarkerAlt, FaPhoneAlt, FaEnvelope, FaClock, FaPaperPlane } from 'r
 import { toast } from 'react-toastify'
 import { contactApi, type ContactMessagePayload } from '../../apis/contact.api'
 
+const SUPPORT_CONVERSATION_KEY = 'vivugo_support_conversation_id'
+const SUPPORT_NAME_KEY = 'vivugo_support_name'
+const SUPPORT_EMAIL_KEY = 'vivugo_support_email'
+const SUPPORT_PHONE_KEY = 'vivugo_support_phone'
+
 // Dữ liệu mẫu
 const officeLocations = [
   {
@@ -143,7 +148,14 @@ function ContactFormAndOffices() {
     }
     setIsSubmitting(true)
     try {
-      await contactApi.submitMessage({ ...formData, subject })
+      const response = await contactApi.submitMessage({ ...formData, subject })
+      const conversationId = response.data?.conversationId
+      if (conversationId) {
+        localStorage.setItem(SUPPORT_CONVERSATION_KEY, conversationId)
+        localStorage.setItem(SUPPORT_NAME_KEY, formData.name)
+        localStorage.setItem(SUPPORT_EMAIL_KEY, formData.email)
+        localStorage.setItem(SUPPORT_PHONE_KEY, formData.phone)
+      }
       toast.success('Tin nhắn của bạn đã được gửi thành công! Chúng tôi sẽ phản hồi sớm nhất.')
       setFormData({ name: '', email: '', phone: '', message: '' })
       setSubject('')
@@ -363,4 +375,5 @@ export default function ContactScreen() {
     </div>
   )
 }
+
 

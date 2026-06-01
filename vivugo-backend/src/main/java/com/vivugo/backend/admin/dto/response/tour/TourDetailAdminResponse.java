@@ -24,6 +24,7 @@ public class TourDetailAdminResponse {
     private int maxParticipants;
     private int minParticipants;
     private String imageURL;
+    private String reviewVideoUrl;
     private String status;
     private Integer ranking;
 
@@ -48,6 +49,7 @@ public class TourDetailAdminResponse {
         this.maxParticipants = tour.getMaxParticipants();
         this.minParticipants = tour.getMinParticipants();
         this.imageURL = tour.getImageURL();
+        this.reviewVideoUrl = tour.getReviewVideoUrl();
         this.status = tour.getStatus() != null ? tour.getStatus().name() : null;
         this.ranking = tour.getRanking();
 

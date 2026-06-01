@@ -1,11 +1,19 @@
 package com.vivugo.backend.model;
 
 import com.vivugo.backend.model.enums.ReviewStatus;
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "reviews")
@@ -16,17 +24,36 @@ public class Review {
     private String reviewID;
 
     @Column(nullable = false)
-    private int rating; // (1-5 sao)
+    private int rating;
 
     @Column(columnDefinition = "TEXT")
     private String comment;
+
+    @Column(length = 1000)
+    private String videoUrl;
 
     @Column(nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Enumerated(EnumType.STRING)
-    private ReviewStatus status = ReviewStatus.PENDING; // Chờ admin duyệt
+    private ReviewStatus status = ReviewStatus.PENDING;
+
+    @Column(columnDefinition = "TEXT")
+    private String adminReply;
+
+    private LocalDateTime repliedAt;
+
+    @Column(length = 255)
+    private String repliedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tour_id", nullable = false)
+    private Tour tour;
 
     public String getReviewID() {
         return reviewID;
@@ -52,6 +79,14 @@ public class Review {
         this.comment = comment;
     }
 
+    public String getVideoUrl() {
+        return videoUrl;
+    }
+
+    public void setVideoUrl(String videoUrl) {
+        this.videoUrl = videoUrl;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -66,6 +101,30 @@ public class Review {
 
     public void setStatus(ReviewStatus status) {
         this.status = status;
+    }
+
+    public String getAdminReply() {
+        return adminReply;
+    }
+
+    public void setAdminReply(String adminReply) {
+        this.adminReply = adminReply;
+    }
+
+    public LocalDateTime getRepliedAt() {
+        return repliedAt;
+    }
+
+    public void setRepliedAt(LocalDateTime repliedAt) {
+        this.repliedAt = repliedAt;
+    }
+
+    public String getRepliedBy() {
+        return repliedBy;
+    }
+
+    public void setRepliedBy(String repliedBy) {
+        this.repliedBy = repliedBy;
     }
 
     public User getUser() {
@@ -83,14 +142,5 @@ public class Review {
     public void setTour(Tour tour) {
         this.tour = tour;
     }
-
-    // --- Mối quan hệ ---
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tour_id", nullable = false)
-    private Tour tour;
 }
+

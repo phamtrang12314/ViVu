@@ -1,7 +1,7 @@
 // frontend-demo/src/apis/tour.ts
 import http from '../utils/http'
 // (CẬP NHẬT) Import thêm TourListParams
-import type { Tour, TourApiResponse, TourListParams, TourDetails } from '../types/tour'
+import type { Tour, TourApiResponse, TourListParams, TourDetails, RecommendationResponse } from '../types/tour'
 
 export const tourApi = {
   getFeaturedTours: () => {
@@ -24,6 +24,15 @@ export const tourApi = {
 
   getTourDetails: (id: string) => {
     return http.get<TourDetails>(`tours/${id}`)
+  },
+
+  trackTourView: (id: string, sessionId: string) => {
+    return http.post<void>(`tours/${id}/view`, { sessionId })
+  },
+
+  getPersonalizedRecommendations: (sessionId: string, size = 8) => {
+    return http.get<RecommendationResponse>('recommendations/personalized', {
+      params: { sessionId, size }
+    })
   }
 }
-

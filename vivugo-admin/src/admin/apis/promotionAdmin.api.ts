@@ -30,5 +30,8 @@ export const promotionAdminApi = {
   // [BỔ SUNG]
   updatePromotion: (id: string, data: PromotionSave) =>
     http.put<PromotionDetailAdmin>(`${URL}/${id}`, data),
+
+  deletePromotion: (id: string) =>
+    http.delete<void>(`${URL}/${id}`),
 };
 

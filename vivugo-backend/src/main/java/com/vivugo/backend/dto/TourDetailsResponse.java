@@ -29,6 +29,7 @@ public class TourDetailsResponse implements Serializable {
     private Double finalPriceChild;
     private int maxParticipants;
     private String imageURL;
+    private String reviewVideoUrl;
     private String status;
     private Integer ranking;
     private TourTypeDto tourType;
@@ -54,6 +55,7 @@ public class TourDetailsResponse implements Serializable {
         response.setPriceChild(tour.getPriceChild());
         response.setMaxParticipants(tour.getMaxParticipants());
         response.setImageURL(tour.getImageURL());
+        response.setReviewVideoUrl(tour.getReviewVideoUrl());
         response.setStatus(tour.getStatus() == null ? null : tour.getStatus().name());
         response.setRanking(tour.getRanking());
 
@@ -138,6 +140,8 @@ public class TourDetailsResponse implements Serializable {
     public void setMaxParticipants(int maxParticipants) { this.maxParticipants = maxParticipants; }
     public String getImageURL() { return imageURL; }
     public void setImageURL(String imageURL) { this.imageURL = imageURL; }
+    public String getReviewVideoUrl() { return reviewVideoUrl; }
+    public void setReviewVideoUrl(String reviewVideoUrl) { this.reviewVideoUrl = reviewVideoUrl; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Integer getRanking() { return ranking; }

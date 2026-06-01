@@ -171,6 +171,13 @@ const ManageBookingScreen: React.FC = () => {
     navigate(`/admin/manage-booking/detail/${id}`)
   }
 
+  const applyStatusFilter = (status?: BookingStatus) => {
+    updateParams({
+      status,
+      page: 0
+    })
+  }
+
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       {/* Header + buttons */}
@@ -206,38 +213,56 @@ const ManageBookingScreen: React.FC = () => {
           </button>
         </div>
       </div>
-
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700 text-lg font-bold">
+      <div className='mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4'>
+        <button
+          onClick={() => applyStatusFilter(undefined)}
+          className={`flex items-center gap-3 rounded-2xl border bg-white px-5 py-4 text-left shadow-sm ${
+            !queryParams.status ? 'border-blue-300 ring-2 ring-blue-100' : 'border-transparent'
+          }`}
+        >
+          <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-lg font-bold text-gray-700'>
             {stats?.total ?? 0}
           </div>
-          <div className="text-xs text-gray-500">Tổng booking</div>
-        </div>
+          <div className='text-xs text-gray-500'>Tổng booking</div>
+        </button>
 
-        <div className="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center text-yellow-600 text-lg font-bold">
+        <button
+          onClick={() => applyStatusFilter('PROCESSING')}
+          className={`flex items-center gap-3 rounded-2xl border bg-white px-5 py-4 text-left shadow-sm ${
+            queryParams.status === 'PROCESSING' ? 'border-yellow-300 ring-2 ring-yellow-100' : 'border-transparent'
+          }`}
+        >
+          <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-50 text-lg font-bold text-yellow-600'>
             {stats?.processing ?? 0}
           </div>
-          <div className="text-xs text-gray-500">Đang xử lý</div>
-        </div>
+          <div className='text-xs text-gray-500'>Đang xử lý</div>
+        </button>
 
-        <div className="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600 text-lg font-bold">
+        <button
+          onClick={() => applyStatusFilter('CONFIRMED')}
+          className={`flex items-center gap-3 rounded-2xl border bg-white px-5 py-4 text-left shadow-sm ${
+            queryParams.status === 'CONFIRMED' ? 'border-green-300 ring-2 ring-green-100' : 'border-transparent'
+          }`}
+        >
+          <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-lg font-bold text-green-600'>
             {stats?.confirmed ?? 0}
           </div>
-          <div className="text-xs text-gray-500">Đã xác nhận</div>
-        </div>
+          <div className='text-xs text-gray-500'>Đã xác nhận</div>
+        </button>
 
-        <div className="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 text-lg font-bold">
+        <button
+          onClick={() => applyStatusFilter('COMPLETED')}
+          className={`flex items-center gap-3 rounded-2xl border bg-white px-5 py-4 text-left shadow-sm ${
+            queryParams.status === 'COMPLETED' ? 'border-blue-300 ring-2 ring-blue-100' : 'border-transparent'
+          }`}
+        >
+          <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-lg font-bold text-blue-600'>
             {stats?.completed ?? 0}
           </div>
-          <div className="text-xs text-gray-500">Hoàn thành</div>
-        </div>
+          <div className='text-xs text-gray-500'>Hoàn thành</div>
+        </button>
       </div>
-
       {/* Filter bar */}
       {/* Khung 1: Tìm kiếm + trạng thái + sắp xếp */}
       <div className="bg-white shadow-md rounded-xl p-5 flex flex-wrap items-center gap-4 mb-4">
@@ -455,4 +480,5 @@ const ManageBookingScreen: React.FC = () => {
 }
 
 export default ManageBookingScreen
+
 
