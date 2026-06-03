@@ -300,22 +300,13 @@ public class BookingService {
     }
 
     @Transactional
-    public void requestCancelBooking(String bookingId, String reason) {
+    public void requestCancelBooking(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
         if (booking.getStatus() == BookingStatus.CANCELED) {
             return;
         }
-
-        String trimmedReason = reason == null ? "" : reason.trim();
-        if (trimmedReason.length() < 5) {
-            throw new IllegalStateException("Vui lòng nhập lý do hủy tour ít nhất 5 ký tự");
-        }
-        if (trimmedReason.length() > 1000) {
-            trimmedReason = trimmedReason.substring(0, 1000);
-        }
-        booking.setCancellationReason(trimmedReason);
 
         PaymentStatus paymentStatus = resolvePaymentStatus(booking);
         if (paymentStatus != PaymentStatus.SUCCESS) {

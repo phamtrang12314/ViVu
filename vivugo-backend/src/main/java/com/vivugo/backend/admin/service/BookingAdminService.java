@@ -167,7 +167,6 @@ public class BookingAdminService {
         dto.setFinalAmount(booking.getFinalAmount() != null ? booking.getFinalAmount() : 0.0);
         dto.setRefundStatus(resolveRefundStatus(booking));
         dto.setRefundedAt(booking.getRefundedAt());
-        dto.setCancellationReason(booking.getCancellationReason());
 
         // ===== Customer =====
         User user = booking.getUser();
