@@ -21,7 +21,6 @@ import { bookingAdminApi } from "../../apis/bookingAdmin.api";
 import type { BookingDetailAdmin } from "../../types/bookingAdmin";
 import type { BookingStatus } from "@/types/booking.type";
 import type { PaymentStatus } from "@/admin/types/paymentStatus";
-import { subscribeBookingRealtime } from "@/utils/realtime";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
@@ -80,15 +79,6 @@ const BookingDetailAdminScreen: React.FC = () => {
       return res.data;
     },
   });
-
-  React.useEffect(() => {
-    if (!id) return undefined;
-    return subscribeBookingRealtime((event) => {
-      if (event.bookingId === id) {
-        refetch();
-      }
-    });
-  }, [id, refetch]);
 
   const handleBack = () => navigate("/admin/bookings");
 
@@ -287,15 +277,6 @@ const BookingDetailAdminScreen: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            {(booking.status === "CANCELLATION_REQUESTED" || booking.status === "CANCELED" || booking.cancellationReason) && (
-              <div className="mt-5 rounded-2xl border border-orange-200 bg-orange-50 p-4">
-                <div className="mb-1 text-xs font-bold uppercase text-orange-700">Lý do hủy từ khách hàng</div>
-                <p className="whitespace-pre-wrap text-sm text-orange-950">
-                  {booking.cancellationReason || "Chưa có lý do hủy."}
-                </p>
-              </div>
-            )}
           </section>
 
           {/* Khách hàng + Tour */}
