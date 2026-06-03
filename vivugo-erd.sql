@@ -3,7 +3,7 @@
 -- to visualize the relationship diagram.
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
+//fyuimrmfn
 -- =========================
 -- Core account / user
 -- =========================
