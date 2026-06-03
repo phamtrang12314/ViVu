@@ -15,3 +15,6 @@ RUN echo 'server { listen 80; location / { root /usr/share/nginx/html; index ind
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
+
+
+684gyfdkdj
