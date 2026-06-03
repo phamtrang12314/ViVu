@@ -11,6 +11,10 @@ target/
 *.err.log
 *.out.log
 *.dumpstream
+egfadv
+egwsdv
+ewgdsv
+egds
 logs/
 
 # Local environment
