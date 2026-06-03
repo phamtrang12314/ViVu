@@ -5,6 +5,7 @@ import type { BookingAdmin } from "../../types/bookingAdmin";
 import type { PaymentStatus } from "@/admin/types/paymentStatus";
 import { bookingAdminApi } from "../../apis/bookingAdmin.api";
 import { ArrowLeft, RefreshCw } from "lucide-react";
+import { subscribeBookingRealtime } from "@/utils/realtime";
 
 // helper
 const formatCurrency = (value: number) =>
@@ -47,6 +48,14 @@ const CanceledBookingsScreen: React.FC = () => {
   const bookings: BookingAdmin[] = data?.content || [];
   const totalPages = data?.totalPages || 0;
   const currentPage = data?.number ?? 0;
+
+  React.useEffect(() => {
+    return subscribeBookingRealtime((event) => {
+      if (event.type === "BOOKING_CANCEL_REQUESTED" || event.type === "BOOKING_STATUS_CHANGED") {
+        refetch();
+      }
+    });
+  }, [refetch]);
 
   const handleRefresh = () => {
     refetch();
@@ -143,6 +152,7 @@ const CanceledBookingsScreen: React.FC = () => {
                 Ngày khởi hành
               </th>
               <th className="px-5 py-3 font-semibold text-black">Giá</th>
+              <th className="px-5 py-3 font-semibold text-black">Lý do hủy</th>
               <th className="px-5 py-3 font-semibold text-black">
                 Thanh toán
               </th>
@@ -154,13 +164,13 @@ const CanceledBookingsScreen: React.FC = () => {
           <tbody className="text-gray-800 text-sm">
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">
+                <td colSpan={8} className="py-8 text-center text-gray-500">
                   Đang tải dữ liệu...
                 </td>
               </tr>
             ) : bookings.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">
+                <td colSpan={8} className="py-8 text-center text-gray-500">
                   Không có booking nào đang chờ hủy.
                 </td>
               </tr>
@@ -211,6 +221,12 @@ const CanceledBookingsScreen: React.FC = () => {
                     <span className="text-blue-600 font-semibold">
                       {formatCurrency(b.finalAmount)}
                     </span>
+                  </td>
+
+                  <td className="px-5 py-4 align-top max-w-xs">
+                    <p className="line-clamp-3 text-sm text-gray-700" title={b.cancellationReason || ""}>
+                      {b.cancellationReason || "Chưa có lý do"}
+                    </p>
                   </td>
 
                   <td className="px-5 py-4 align-top">
