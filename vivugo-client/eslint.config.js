@@ -34,5 +34,20 @@ export default defineConfig([
       ],
       'react-refresh/only-export-components': 'off',
     },
+    egefwe
+    wd
+    grg
+    r
+    è
+
+đứ
+
+è
+
+d
+
+è
+
+
   },
 ])
