@@ -1,0 +1,17 @@
+﻿node_modules/
+dist/
+build/
+target/
+logs/
+*.log
+*.err.log
+*.out.log
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+.metadata/
+.codex-run/
+.DS_Store
+Thumbs.db

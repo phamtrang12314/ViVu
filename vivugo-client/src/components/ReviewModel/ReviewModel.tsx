@@ -20,6 +20,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const queryClient = useQueryClient();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createReviewMutation = useMutation({
@@ -39,7 +40,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) {
       toast.error("Vui lòng chọn số sao đánh giá.");
@@ -48,11 +49,25 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
 
     setIsSubmitting(true);
 
-    createReviewMutation.mutate({
-      tourId,
-      rating,
-      comment,
-    });
+    try {
+      let uploadedMediaUrl: string | undefined;
+      if (mediaFile) {
+        const uploadResponse = await reviewApi.uploadReviewMedia(mediaFile);
+        uploadedMediaUrl = uploadResponse.data.url;
+      }
+
+      createReviewMutation.mutate({
+        tourId,
+        rating,
+        comment,
+        videoUrl: uploadedMediaUrl,
+      });
+    } catch (error: any) {
+      setIsSubmitting(false);
+      const message =
+        error.response?.data || "Không tải được ảnh/video. Vui lòng thử lại.";
+      toast.error(message);
+    }
   };
 
   return (
@@ -99,6 +114,34 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
               placeholder="Chia sẻ trải nghiệm của bạn..."
               disabled={isSubmitting}
             />
+          </div>
+
+          <div className="mb-6">
+            <label
+              htmlFor="mediaFile"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Ảnh hoặc video từ điện thoại (Tùy chọn)
+            </label>
+            <input
+              id="mediaFile"
+              type="file"
+              accept="image/*,video/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                setMediaFile(file);
+              }}
+              className="w-full border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              disabled={isSubmitting}
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              Hỗ trợ ảnh/video, tối đa 50MB.
+            </p>
+            {mediaFile && (
+              <p className="mt-1 text-xs text-gray-600">
+                Đã chọn: {mediaFile.name}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end space-x-3">

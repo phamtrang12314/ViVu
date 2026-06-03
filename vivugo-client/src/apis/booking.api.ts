@@ -39,7 +39,7 @@ export const bookingApi = {
     return http.get<BookingHistoryResponse[]>('bookings/history')
   },
   requestCancelBooking: (id: string) => {
-    return http.put(`/bookings/${id}/cancel-request`, {})
+    return http.put(`bookings/${id}/cancel-request`, {})
   }
 }
 // Thêm function gọi API gửi yêu cầu hủy

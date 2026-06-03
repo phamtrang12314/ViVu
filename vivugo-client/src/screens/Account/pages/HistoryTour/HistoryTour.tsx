@@ -3,9 +3,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FaCalendarAlt, FaUsers } from 'react-icons/fa'
 import { bookingApi } from '../../../../apis/booking.api'
-import { formatCurrency } from '../../../../utils/utils'
+import { formatCurrency, resolveAssetUrl } from '../../../../utils/utils'
 import { ReviewButton } from '../../../../components/ReviewButton/ReviewButton'
 import { Button } from '../../../../components/ui/button'
+import type { BookingHistoryResponse } from '../../../../types/booking.type'
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { classes: string; text: string }> = {
@@ -41,7 +42,7 @@ const RefundBadge = ({ status }: { status?: string | null }) => {
 }
 
 export default function HistoryTour() {
-  const [confirmBookingId, setConfirmBookingId] = useState<string | null>(null)
+  const [confirmBooking, setConfirmBooking] = useState<BookingHistoryResponse | null>(null)
 
   const {
     data: historyData,
@@ -82,7 +83,7 @@ export default function HistoryTour() {
             <div key={booking.bookingID} className="overflow-hidden rounded-xl border md:flex">
               <div className="h-48 md:w-1/4">
                 <img
-                  src={booking.tourImageURL}
+                  src={resolveAssetUrl(booking.tourImageURL, 'https://placehold.co/400x300?text=Tour')}
                   alt={booking.tourTitle}
                   onError={(e) => (e.currentTarget.src = 'https://placehold.co/400x300?text=Tour')}
                   className="h-full w-full object-cover"
@@ -124,12 +125,21 @@ export default function HistoryTour() {
                         <RefundBadge status={booking.refundStatus} />
                       )}
 
+                    {booking.status === 'PROCESSING' && booking.paymentStatus !== 'SUCCESS' && (
+                      <Link
+                        to={`/payment/${booking.bookingID}`}
+                        className="inline-flex h-9 items-center rounded-md bg-emerald-600 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                      >
+                        Thanh toán
+                      </Link>
+                    )}
+
                     {(booking.status === 'PROCESSING' || booking.status === 'CONFIRMED') && (
                       <Button
                         variant="destructive"
                         className="text-white"
                         size="sm"
-                        onClick={() => setConfirmBookingId(booking.bookingID)}
+                        onClick={() => setConfirmBooking(booking)}
                       >
                         Hủy tour
                       </Button>
@@ -144,15 +154,22 @@ export default function HistoryTour() {
         </div>
       )}
 
-      {confirmBookingId && (
+      {confirmBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-[360px] rounded-xl bg-white p-6 shadow-lg">
             <h3 className="mb-2 text-lg font-semibold">Xác nhận hủy tour</h3>
 
-            <p className="mb-6 text-sm text-gray-600">Bạn có chắc muốn gửi yêu cầu hủy tour này không?</p>
+            <p className="mb-3 text-sm text-gray-600">
+              {confirmBooking.paymentStatus === 'SUCCESS'
+                ? 'Đơn đã thanh toán sẽ chuyển sang trạng thái chờ admin duyệt hủy và xử lý hoàn tiền theo chính sách.'
+                : 'Đơn chưa thanh toán sẽ được hủy ngay, không cần admin duyệt.'}
+            </p>
+            <Link to="/refund-policy" className="mb-6 block text-sm font-semibold text-blue-600 hover:text-blue-700">
+              Xem chính sách hủy và hoàn tiền
+            </Link>
 
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setConfirmBookingId(null)}>
+              <Button variant="outline" onClick={() => setConfirmBooking(null)}>
                 Không
               </Button>
 
@@ -160,8 +177,8 @@ export default function HistoryTour() {
                 variant="destructive"
                 className="text-white"
                 onClick={async () => {
-                  await bookingApi.requestCancelBooking(confirmBookingId)
-                  setConfirmBookingId(null)
+                  await bookingApi.requestCancelBooking(confirmBooking.bookingID)
+                  setConfirmBooking(null)
                   refetch()
                 }}
               >

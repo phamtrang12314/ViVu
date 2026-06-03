@@ -1,26 +1,42 @@
 package com.vivugo.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
+
 import java.math.BigDecimal;
 
 @Getter
 @Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SeePayWebhookRequest {
 
-    private Long id; // ID giao dịch trên hệ thống SePay
+    private Long id;
 
-    private String gateway; // Cổng thanh toán (VD: MB, VCB)
+    private String gateway;
 
-    private String transactionDate; // Thời gian giao dịch
+    @JsonAlias("transaction_date")
+    private String transactionDate;
 
-    private String accountNumber; // Số tài khoản nhận tiền
+    @JsonAlias("account_number")
+    private String accountNumber;
 
-    private String content; // Nội dung chuyển khoản (QUAN TRỌNG: Chứa BookingID)
+    @JsonAlias("sub_account")
+    private String subAccount;
 
-    private String transferType; // Loại giao dịch ("in" hoặc "out")
+    private String code;
 
-    private BigDecimal transferAmount; // Số tiền giao dịch
+    private String content;
 
-    private String referenceCode; // Mã tham chiếu ngân hàng
+    @JsonAlias("transfer_type")
+    private String transferType;
+
+    @JsonAlias({"transfer_amount", "amountIn", "amount_in"})
+    private BigDecimal transferAmount;
+
+    @JsonAlias("reference_code")
+    private String referenceCode;
+
+    private String description;
 }
