@@ -10,6 +10,11 @@ class Account {
   +isLocked: boolean
 }
 
+rưhsfbwge
+gứdv
+egwsdv
+ewgfdsv
+èwsd
 class Admin {
   +adminID: String
   +name: String
