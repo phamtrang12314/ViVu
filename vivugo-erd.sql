@@ -16,6 +16,11 @@ CREATE TABLE IF NOT EXISTS customers (
     address VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );//////////////
+    tewgsd
+    tegfad
+    tèad
+    tè
+    dtefgwd
 
 CREATE TABLE IF NOT EXISTS admins (
     adminid VARCHAR(255) PRIMARY KEY,
