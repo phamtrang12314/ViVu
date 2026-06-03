@@ -45,3 +45,15 @@ vdjgdhewgwjnxjsbdsnhjdshn
 *.iml
 .DS_Store
 Thumbs.db
+
+*-final-check.png
+*-after5s.png
+*-after-login-check.png
+# IDE and OS files
+.idea/
+.vscode/
+.metadata/
+.github/modernize/
+*.iml
+.DS_Store
+Thumbs.db
