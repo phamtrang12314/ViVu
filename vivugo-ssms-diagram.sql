@@ -5,6 +5,10 @@
 -- ==========================================
 -- Drop existing tables so script can rerun
 -- ==========================================
+tewgfds
+    etfad
+    rèwas
+    èa
 IF OBJECT_ID('dbo.Contact_Messages', 'U') IS NOT NULL DROP TABLE dbo.Contact_Messages;
 IF OBJECT_ID('dbo.Support_Messages', 'U') IS NOT NULL DROP TABLE dbo.Support_Messages;
 IF OBJECT_ID('dbo.Support_Conversations', 'U') IS NOT NULL DROP TABLE dbo.Support_Conversations;
