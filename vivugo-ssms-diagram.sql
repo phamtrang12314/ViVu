@@ -405,3 +405,6 @@ CREATE TABLE dbo.Otp_Codes (
     Used BIT NOT NULL DEFAULT 0,
     Created_At DATETIME2 NOT NULL DEFAULT SYSDATETIME()
 );
+
+
+/**/
