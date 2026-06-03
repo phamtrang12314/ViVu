@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS customers (
     avatarurl VARCHAR(255),
     address VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+);//////////////
 
 CREATE TABLE IF NOT EXISTS admins (
     adminid VARCHAR(255) PRIMARY KEY,
