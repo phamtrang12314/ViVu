@@ -1,6 +1,0 @@
-target/
-uploads/
-.env
-.mvn/wrapper/maven-wrapper.jar
-*.jar
-*.jar.original

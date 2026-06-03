@@ -26,7 +26,6 @@ public class BookingAdminResponse {
     private final Double finalAmount;
     private final BookingStatus status;
     private final PaymentStatus paymentStatus;
-    private final String cancellationReason;
 
     public BookingAdminResponse(Booking booking) {
         this.bookingID = booking.getBookingID();
@@ -48,7 +47,6 @@ public class BookingAdminResponse {
 
         this.finalAmount = booking.getFinalAmount();
         this.status = booking.getStatus();
-        this.cancellationReason = booking.getCancellationReason();
 
         this.paymentStatus = resolvePaymentStatus(booking);
     }
