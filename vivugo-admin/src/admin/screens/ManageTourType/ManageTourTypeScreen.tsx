@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { omitBy, isUndefined } from "lodash";
-import { Eye, Edit2 } from "lucide-react";
+import { Eye, Edit2, Trash2 } from "lucide-react";
 import { tourTypeAdminApi1 } from "../../apis/tourTypeAdmin.api";
 import type {
   TourTypeAdmin,
@@ -95,6 +95,18 @@ const ManageTourTypeScreen: React.FC = () => {
   // Xem chi tiết (vẫn chuyển trang như cũ)
   const handleDetail = (id: string) => {
     navigate(`/admin/tour-types/detail/${id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    const confirmed = window.confirm("Bạn chắc chắn muốn xóa loại tour này?");
+    if (!confirmed) return;
+
+    try {
+      await tourTypeAdminApi1.deleteTourType(id);
+      refetch();
+    } catch {
+      window.alert("Xóa loại tour thất bại. Loại tour có thể đang được tour sử dụng.");
+    }
   };
 
   return (
@@ -206,6 +218,13 @@ const ManageTourTypeScreen: React.FC = () => {
                         title="Chỉnh sửa"
                       >
                         <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(t.tourTypeID)}
+                        className="border border-red-500 text-red-500 rounded-lg p-2 hover:bg-red-50"
+                        title="Xóa"
+                      >
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </td>

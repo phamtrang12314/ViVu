@@ -1,6 +1,7 @@
 package com.vivugo.backend.admin.service;
 
 import com.vivugo.backend.admin.dto.request.ReviewStatusRequest;
+import com.vivugo.backend.admin.dto.request.ReviewReplyRequest;
 import com.vivugo.backend.admin.dto.response.review.ReviewAdminResponse;
 import com.vivugo.backend.exception.ResourceNotFoundException;
 import com.vivugo.backend.model.Review;
@@ -10,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
-import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +43,20 @@ public class ReviewAdminService {
         ReviewStatus newStatus = ReviewStatus.valueOf(request.getStatus().toUpperCase());
 
         r.setStatus(newStatus);
+        reviewRepository.save(r);
+    }
+
+    public void replyReview(String reviewId, ReviewReplyRequest request, String adminName) {
+        Review r = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
+
+        if (request.getReply() == null || request.getReply().isBlank()) {
+            throw new IllegalArgumentException("Nội dung phản hồi không được để trống.");
+        }
+
+        r.setAdminReply(request.getReply().trim());
+        r.setRepliedAt(LocalDateTime.now());
+        r.setRepliedBy(adminName == null || adminName.isBlank() ? "Admin" : adminName.trim());
         reviewRepository.save(r);
     }
 }

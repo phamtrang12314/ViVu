@@ -71,6 +71,22 @@ export interface TourListParams {
     duration_max?: number | string;
 }
 
+export interface PreferenceProfile {
+    hasBehavior: boolean;
+    regionCounts: Record<string, number>;
+    tourTypeCounts: Record<string, number>;
+    minViewedPrice: number | null;
+    maxViewedPrice: number | null;
+    averageViewedPrice: number | null;
+    viewedTourIds: string[];
+}
+
+export interface RecommendationResponse {
+    reason: string;
+    profile: PreferenceProfile;
+    tours: Tour[];
+}
+
 export interface TourListAdminParams {
     page?: number | string;
     size?: number | string;
@@ -113,6 +129,7 @@ export interface TourDetails {
     finalPriceChild: number; // <-- (MỚI) Thêm giá cuối cùng
     maxParticipants: number;
     imageURL: string;
+    reviewVideoUrl?: string | null;
     status: string;
     ranking: number;
     // finalPrice: number; // Trường này không còn trong DTO chi tiết

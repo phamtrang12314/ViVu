@@ -7,7 +7,11 @@ export interface Review {
   id?: string
   rating: number
   comment: string
+  videoUrl?: string | null
   createdAt: string
+  adminReply?: string | null
+  repliedAt?: string | null
+  repliedBy?: string | null
   photoUrls?: string[]
   user: ReviewUser
 }

@@ -1,14 +1,18 @@
 export type ReviewStatus = "PENDING" | "APPROVED" | "HIDDEN"
 
 export interface ReviewAdmin {
-  reviewID: number
+  reviewID: string
   tourTitle: string | null
   userName: string | null
   userEmail: string | null
   rating: number
-  content: string
+  comment: string
+  videoUrl?: string | null
   status: ReviewStatus
   createdAt: string
+  adminReply?: string | null
+  repliedAt?: string | null
+  repliedBy?: string | null
 }
 
 export interface ReviewAdminListParams {

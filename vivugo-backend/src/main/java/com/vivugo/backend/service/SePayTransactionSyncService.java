@@ -3,10 +3,14 @@ package com.vivugo.backend.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vivugo.backend.model.Booking;
+import com.vivugo.backend.model.enums.BookingStatus;
 import com.vivugo.backend.model.enums.PaymentStatus;
+import com.vivugo.backend.repository.BookingRepository;
 import com.vivugo.backend.util.PaymentCodeUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
@@ -18,13 +22,16 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 public class SePayTransactionSyncService {
 
     private static final DateTimeFormatter SEPAY_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final int MAX_ATTEMPTS = 3;
 
     private final BookingService bookingService;
+    private final BookingRepository bookingRepository;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private final String apiToken;
@@ -32,11 +39,13 @@ public class SePayTransactionSyncService {
 
     public SePayTransactionSyncService(
             BookingService bookingService,
+            BookingRepository bookingRepository,
             ObjectMapper objectMapper,
             @Value("${sepay.api-token:${SEPAY_API_TOKEN:}}") String apiToken,
             @Value("${sepay.account-number:${SEPAY_ACCOUNT_NUMBER:}}") String accountNumber
     ) {
         this.bookingService = bookingService;
+        this.bookingRepository = bookingRepository;
         this.objectMapper = objectMapper;
         this.apiToken = apiToken;
         this.accountNumber = accountNumber;
@@ -45,6 +54,27 @@ public class SePayTransactionSyncService {
 
     public boolean isEnabled() {
         return apiToken != null && !apiToken.isBlank();
+    }
+
+    @Scheduled(
+            fixedDelayString = "${sepay.sync.fixed-delay-ms:${SEPAY_SYNC_FIXED_DELAY_MS:30000}}",
+            initialDelayString = "${sepay.sync.initial-delay-ms:${SEPAY_SYNC_INITIAL_DELAY_MS:10000}}"
+    )
+    @Transactional
+    public void reconcileProcessingBookings() {
+        if (!isEnabled()) {
+            return;
+        }
+
+        List<Booking> processingBookings = bookingRepository.findByStatus(BookingStatus.PROCESSING);
+        for (Booking booking : processingBookings) {
+            try {
+                reconcileBooking(booking);
+            } catch (Exception e) {
+                System.err.println("SePay scheduled reconciliation failed for booking "
+                        + booking.getBookingID() + ": " + e.getMessage());
+            }
+        }
     }
 
     public boolean reconcileBooking(Booking booking) {
@@ -61,23 +91,7 @@ public class SePayTransactionSyncService {
 
         try {
             URI uri = buildTransactionsUri(booking, expectedAmount);
-            HttpRequest request = HttpRequest.newBuilder(uri)
-                    .header("Accept", "application/json")
-                    .header("Authorization", "Bearer " + apiToken.trim())
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(
-                    request,
-                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
-            );
-
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                System.err.println("SePay transaction sync failed with HTTP " + response.statusCode() + ": " + response.body());
-                return false;
-            }
-
-            JsonNode transactions = objectMapper.readTree(response.body()).path("transactions");
+            JsonNode transactions = fetchTransactionsWithRetry(uri);
             if (!transactions.isArray()) {
                 return false;
             }
@@ -92,6 +106,44 @@ public class SePayTransactionSyncService {
         }
 
         return false;
+    }
+
+    private JsonNode fetchTransactionsWithRetry(URI uri) throws Exception {
+        Exception lastException = null;
+
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder(uri)
+                        .header("Accept", "application/json")
+                        .header("Authorization", "Bearer " + apiToken.trim())
+                        .GET()
+                        .build();
+
+                HttpResponse<String> response = httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+                );
+
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    return objectMapper.readTree(response.body()).path("transactions");
+                }
+
+                lastException = new IllegalStateException(
+                        "SePay transaction sync failed with HTTP " + response.statusCode() + ": " + response.body()
+                );
+            } catch (Exception e) {
+                lastException = e;
+            }
+
+            if (attempt < MAX_ATTEMPTS) {
+                sleepBeforeRetry(attempt);
+            }
+        }
+
+        if (lastException != null) {
+            throw lastException;
+        }
+        throw new IllegalStateException("SePay transaction sync failed without details.");
     }
 
     private URI buildTransactionsUri(Booking booking, BigDecimal expectedAmount) {
@@ -150,10 +202,18 @@ public class SePayTransactionSyncService {
             return BigDecimal.ZERO;
         }
         try {
-            return new BigDecimal(value.trim());
+            return new BigDecimal(normalizeMoney(value));
         } catch (NumberFormatException e) {
             return BigDecimal.ZERO;
         }
+    }
+
+    private String normalizeMoney(String value) {
+        String normalized = value.trim().replace(",", "").replace(" ", "");
+        if (normalized.matches("\\d{1,3}(\\.\\d{3})+")) {
+            return normalized.replace(".", "");
+        }
+        return normalized;
     }
 
     private String firstNonBlank(String... values) {
@@ -163,5 +223,14 @@ public class SePayTransactionSyncService {
             }
         }
         return null;
+    }
+
+    private void sleepBeforeRetry(int attempt) {
+        long delayMs = 1000L + (attempt - 1) * 1000L;
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException interruptedException) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

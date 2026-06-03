@@ -2,6 +2,9 @@ package com.vivugo.backend.repository;
 
 import com.vivugo.backend.model.Payment;
 import com.vivugo.backend.model.enums.PaymentStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -45,4 +48,9 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     @Query("SELECT MAX(YEAR(p.paymentDate)) FROM Payment p WHERE p.status = :status")
     Integer findLatestPaymentYear(@Param("status") PaymentStatus status);
+
+    long countByStatusAndPaymentDateBetween(PaymentStatus status, LocalDateTime start, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"invoice", "invoice.booking", "invoice.booking.user", "invoice.booking.tour"})
+    Page<Payment> findAllByStatusOrderByPaymentDateDesc(PaymentStatus status, Pageable pageable);
 }

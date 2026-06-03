@@ -9,8 +9,10 @@ import ManageDestinationScreen from "./admin/screens/ManageDestination/ManageDes
 import FormDestinationScreen from "./admin/screens/ManageDestination/FormDestinationScreen";
 import DestinationDetailScreen from "./admin/screens/ManageDestination/DestinationDetailAdminScreen";
 import DashboardScreen from "./admin/screens/DashboardScreen";
+import RevenueReportScreen from "./admin/screens/RevenueScreen/RevenueReportScreen";
 import ManageTourScreen from "./admin/screens/ManageTour/ManageTourScreen";
 import ManagePromotionScreen from "./admin/screens/PromotionScreen/ManagePromotionScreen";
+import PromotionDetailScreen from "./admin/screens/PromotionScreen/PromotionDetailScreen";
 import UserAdminScreen from "./admin/screens/ManageUserScreen/ManageUserScreen";
 import ContactMessageScreen from "./admin/screens/ContactMessageScreen/ContactMessageScreen";
 import ManageReviewScreen from "./admin/screens/ReviewScreen/ManageReviewScreen";
@@ -24,6 +26,7 @@ import CanceledBookingsScreen from "./admin/screens/ManageBookingScreen/Canceled
 
 const adminChildren = [
   { path: "dashboard", element: <DashboardScreen /> },
+  { path: "revenue", element: <RevenueReportScreen /> },
   { path: "manage-tour", element: <ManageTourScreen /> },
   { path: "tours/new", element: <FormTourScreen /> },
   { path: "tours/:id/edit", element: <FormTourScreen /> },
@@ -33,6 +36,7 @@ const adminChildren = [
   { path: "manage-destination/new", element: <FormDestinationScreen /> },
   { path: "manage-destination/detail/:id", element: <DestinationDetailScreen /> },
   { path: "promotions", element: <ManagePromotionScreen /> },
+  { path: "promotions/detail/:id", element: <PromotionDetailScreen /> },
   { path: "users", element: <UserAdminScreen /> },
   { path: "contact-messages", element: <ContactMessageScreen /> },
   { path: "reviews", element: <ManageReviewScreen /> },

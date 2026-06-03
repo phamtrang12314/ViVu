@@ -171,6 +171,14 @@ public class PromotionAdminService {
     }
 
     // (MỚI) Phương thức phụ để ánh xạ DTO sang Entity
+    @Transactional
+    public void deletePromotion(String id) {
+        Promotion p = promotionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Promotion not found with id: " + id));
+        p.setStatus(PromotionStatus.INACTIVE);
+        promotionRepository.save(p);
+    }
+
     private void mapRequestToPromotion(PromotionRequest req, Promotion p) {
         // Ánh xạ các trường cơ bản
         p.setTitle(req.getTitle());

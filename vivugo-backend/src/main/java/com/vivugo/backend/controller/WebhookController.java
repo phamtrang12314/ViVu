@@ -197,10 +197,18 @@ public class WebhookController {
             return null;
         }
         try {
-            return new BigDecimal(value.trim());
+            return new BigDecimal(normalizeMoney(value));
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private String normalizeMoney(String value) {
+        String normalized = value.trim().replace(",", "").replace(" ", "");
+        if (normalized.matches("\\d{1,3}(\\.\\d{3})+")) {
+            return normalized.replace(".", "");
+        }
+        return normalized;
     }
 
     private ResponseEntity<Map<String, Object>> successResponse() {

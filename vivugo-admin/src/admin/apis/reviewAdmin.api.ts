@@ -13,8 +13,12 @@ export const reviewAdminApi = {
     return http.get<ReviewAdminListResponse>(URL, { params })
   },
 
-  updateStatus(reviewId: number, status: ReviewStatus) {
+  updateStatus(reviewId: string, status: ReviewStatus) {
     return http.patch(`${URL}/${reviewId}/status`, { status })
+  },
+
+  reply(reviewId: string, reply: string) {
+    return http.patch(`${URL}/${reviewId}/reply`, { reply })
   }
 }
 

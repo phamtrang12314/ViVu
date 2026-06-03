@@ -357,9 +357,8 @@ public class EmailService {
     }
 
     private boolean hasHttpMailProvider() {
-        return firstNonBlank(
-                environment.getProperty("GOOGLE_CLIENT_ID"),
-                environment.getProperty("GMAIL_CLIENT_ID"),
+        return hasGmailApiProvider()
+                || firstNonBlank(
                 environment.getProperty("BREVO_API_KEY"),
                 environment.getProperty("SENDINBLUE_API_KEY"),
                 environment.getProperty("RESEND_API_KEY")

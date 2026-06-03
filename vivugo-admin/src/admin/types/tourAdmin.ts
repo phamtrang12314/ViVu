@@ -56,6 +56,7 @@ export interface TourDetailAdmin {
   maxParticipants: number
   minParticipants: number
   imageURL: string
+  reviewVideoUrl?: string | null
   status: string
   ranking?: number | null
   tourType?: {

@@ -6,6 +6,7 @@ import com.vivugo.backend.model.Destination;
 import com.vivugo.backend.model.Image;
 import com.vivugo.backend.repository.DestinationRepository;
 import com.vivugo.backend.repository.TourRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,7 @@ public class DestinationService {
         this.tourRepository = tourRepository;
     }
 
+    @Cacheable(cacheNames = "destination:popular")
     public List<DestinationResponse> getPopularDestinations() {
         // Lấy 6 điểm đến, có thể thay đổi logic sau
         return destinationRepository.findAll().stream()
@@ -33,6 +35,7 @@ public class DestinationService {
     }
 
     // (SỬA LỖI 1) Phương thức này cho trường hợp không có region
+    @Cacheable(cacheNames = "destination:all")
     public List<DestinationResponse> getAllDestinations() {
         return destinationRepository.findAll().stream()
                 .map(this::convertToDestinationResponse)
@@ -40,6 +43,7 @@ public class DestinationService {
     }
 
     // (SỬA LỖI 1) Thêm phương thức mới này để xử lý khi có region
+    @Cacheable(cacheNames = "destination:region", key = "#region")
     public List<DestinationResponse> getAllDestinations(String region) {
         // Dùng phương thức mới của repository để lọc
         return destinationRepository.findAllByRegion(region).stream()
@@ -47,6 +51,7 @@ public class DestinationService {
                 .collect(Collectors.toList());
     }
 
+    @Cacheable(cacheNames = "destination:detail", key = "#id")
     public DestinationResponse getDestinationById(String id) {
         Destination destination = destinationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Destination not found with id: " + id));

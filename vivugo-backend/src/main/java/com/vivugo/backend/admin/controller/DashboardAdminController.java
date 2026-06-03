@@ -1,5 +1,6 @@
 package com.vivugo.backend.admin.controller;
 
+import com.vivugo.backend.admin.dto.response.dashboard.DashboardOverviewResponse;
 import com.vivugo.backend.admin.dto.response.dashboard.DashboardStatsResponse;
 import com.vivugo.backend.admin.service.DashboardAdminService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,6 +26,14 @@ public class DashboardAdminController {
             @RequestParam(required = false) Integer months
     ) {
         return ResponseEntity.ok(dashboardAdminService.getDashboardStats(year, months));
+    }
+
+    @GetMapping("/overview")
+    public ResponseEntity<DashboardOverviewResponse> getDashboardOverview(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer months
+    ) {
+        return ResponseEntity.ok(dashboardAdminService.getDashboardOverview(year, months));
     }
 
     // API mới: Xuất báo cáo Booking ra file CSV

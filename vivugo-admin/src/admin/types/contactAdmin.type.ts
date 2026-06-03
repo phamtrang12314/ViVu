@@ -1,23 +1,58 @@
-// src/admin/types/contactAdmin.type.ts
-
 export type ContactMessage = {
-  contactMessId: string; // Map từ database: contact_messid
-  email: string;         // Map từ database: email
-  message: string;       // Map từ database: message
-  phone: string;         // Map từ database: phone
-  sentAt: string;        // Map từ database: sent_at
-  userId: string | null; // Map từ database: user_id (có thể null)
-};
+  id: string
+  contactMessId?: string
+  name?: string
+  email: string
+  message: string
+  phone: string
+  sentAt: string
+  subject?: string | null
+  userID?: string | null
+  userName?: string | null
+  responded?: boolean
+  respondedAt?: string | null
+  respondedBy?: string | null
+  conversationId?: string | null
+}
 
 export type ContactMessageListParams = {
-  page: number;
-  size: number;
-  search?: string;
-};
+  page: number
+  size: number
+  search?: string
+  fromDate?: string
+  toDate?: string
+}
 
 export type ContactMessageListResponse = {
-  content: ContactMessage[];
-  totalPages: number;
-  number: number;
-  totalElements: number;
-};
+  content: ContactMessage[]
+  totalPages: number
+  number: number
+  totalElements: number
+}
+
+export type SupportConversation = {
+  conversationId: string
+  customerName: string
+  customerEmail: string
+  customerPhone?: string | null
+  avatarURL?: string | null
+  replied: boolean
+  lastMessageAt?: string | null
+  lastMessagePreview?: string | null
+}
+
+export type SupportConversationListResponse = {
+  content: SupportConversation[]
+  totalPages: number
+  number: number
+  totalElements: number
+}
+
+export type SupportMessage = {
+  messageId: string
+  conversationId: string
+  senderType: 'CUSTOMER' | 'ADMIN'
+  senderName: string
+  content: string
+  createdAt: string
+}

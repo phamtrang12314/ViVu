@@ -67,7 +67,7 @@ public class AuthService {
         }
 
         if (identifier == null || identifier.isBlank() || loginRequest.getPassword() == null) {
-            return new LoginResponse(false, "Email/số điện thoại hoặc mật khẩu không đúng.");
+            return new LoginResponse(false, "Email/sá»‘ Ä‘iá»‡n thoáº¡i hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng.");
         }
 
         String normalizedIdentifier = identifier.trim();
@@ -81,19 +81,19 @@ public class AuthService {
 
         if (accountOpt.isEmpty()
                 || !passwordEncoder.matches(loginRequest.getPassword(), accountOpt.get().getPassword())) {
-            return new LoginResponse(false, "Email/số điện thoại hoặc mật khẩu không đúng.");
+            return new LoginResponse(false, "Email/sá»‘ Ä‘iá»‡n thoáº¡i hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng.");
         }
 
         Account account = accountOpt.get();
 
         if (account.isLocked()) {
-            return new LoginResponse(false, "Tài khoản đã bị khóa.");
+            return new LoginResponse(false, "TÃ i khoáº£n Ä‘Ã£ bá»‹ khÃ³a.");
         }
 
         String jwtToken = jwtService.generateToken(Map.of("token_type", "CUSTOMER"), account);
         return new LoginResponse(
                 true,
-                "Đăng nhập thành công.",
+                "ÄÄƒng nháº­p thÃ nh cÃ´ng.",
                 "Bearer " + jwtToken,
                 account.getUser().getUserID(),
                 account.getUser().getEmail(),
@@ -105,16 +105,16 @@ public class AuthService {
         Admin admin = adminRepository.findByPhoneNumber(loginRequest.getPhone())
                 .orElse(null);
         if (admin == null || !passwordEncoder.matches(loginRequest.getPassword(), admin.getPassword())) {
-            return new LoginResponse(false, "Số điện thoại hoặc mật khẩu quản trị viên không đúng.");
+            return new LoginResponse(false, "Sá»‘ Ä‘iá»‡n thoáº¡i hoáº·c máº­t kháº©u quáº£n trá»‹ viÃªn khÃ´ng Ä‘Ãºng.");
         }
         if (admin.isLocked()) {
-            return new LoginResponse(false, "Tài khoản quản trị viên đã bị khóa.");
+            return new LoginResponse(false, "TÃ i khoáº£n quáº£n trá»‹ viÃªn Ä‘Ã£ bá»‹ khÃ³a.");
         }
 
         String jwtToken = jwtService.generateToken(Map.of("token_type", "ADMIN"), admin);
         return new LoginResponse(
                 true,
-                "Đăng nhập quản trị viên thành công.",
+                "ÄÄƒng nháº­p quáº£n trá»‹ viÃªn thÃ nh cÃ´ng.",
                 "Bearer " + jwtToken,
                 admin.getAdminID(),
                 admin.getEmail(),
@@ -126,7 +126,7 @@ public class AuthService {
     public String requestRegistrationOtp(OtpRequest request) {
         String email = normalizeEmail(request != null ? request.getEmail() : null);
         if (userRepository.findByEmail(email).isPresent()) {
-            throw new IllegalArgumentException("Email đã được đăng ký.");
+            throw new IllegalArgumentException("Email Ä‘Ã£ Ä‘Æ°á»£c Ä‘Äƒng kÃ½.");
         }
         return createAndSendOtp(email, PURPOSE_REGISTER);
     }
@@ -135,7 +135,7 @@ public class AuthService {
     public String requestPasswordResetOtp(OtpRequest request) {
         String email = normalizeEmail(request != null ? request.getEmail() : null);
         if (userRepository.findByEmail(email).isEmpty()) {
-            throw new IllegalArgumentException("Email chưa được đăng ký.");
+            throw new IllegalArgumentException("Email chÆ°a Ä‘Æ°á»£c Ä‘Äƒng kÃ½.");
         }
         return createAndSendOtp(email, PURPOSE_RESET);
     }
@@ -143,7 +143,7 @@ public class AuthService {
     @Transactional
     public LoginResponse register(RegisterRequest request) {
         if (request == null) {
-            return new LoginResponse(false, "Thông tin đăng ký không hợp lệ.");
+            return new LoginResponse(false, "ThÃ´ng tin Ä‘Äƒng kÃ½ khÃ´ng há»£p lá»‡.");
         }
         String email;
         try {
@@ -154,26 +154,26 @@ public class AuthService {
         String phone = normalizePhone(request.getPhone());
 
         if (request.getName() == null || request.getName().trim().length() < 2) {
-            return new LoginResponse(false, "Họ và tên phải có ít nhất 2 ký tự.");
+            return new LoginResponse(false, "Há» vÃ  tÃªn pháº£i cÃ³ Ã­t nháº¥t 2 kÃ½ tá»±.");
         }
         if (request.getPhone() == null || request.getPhone().isBlank()) {
-            return new LoginResponse(false, "Số điện thoại là bắt buộc.");
+            return new LoginResponse(false, "Sá»‘ Ä‘iá»‡n thoáº¡i lÃ  báº¯t buá»™c.");
         }
         if (phone.length() < 10 || phone.length() > 11) {
-            return new LoginResponse(false, "Số điện thoại không hợp lệ.");
+            return new LoginResponse(false, "Sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng há»£p lá»‡.");
         }
         if (request.getPassword() == null || request.getPassword().length() < 8) {
-            return new LoginResponse(false, "Mật khẩu phải có ít nhất 8 ký tự.");
+            return new LoginResponse(false, "Máº­t kháº©u pháº£i cÃ³ Ã­t nháº¥t 8 kÃ½ tá»±.");
         }
         if (userRepository.findByEmail(email).isPresent()) {
-            return new LoginResponse(false, "Email đã được đăng ký.");
+            return new LoginResponse(false, "Email Ä‘Ã£ Ä‘Æ°á»£c Ä‘Äƒng kÃ½.");
         }
         if (userRepository.findByPhoneNumber(phone).isPresent()
                 || accountRepository.findByUserName(phone).isPresent()) {
-            return new LoginResponse(false, "Số điện thoại đã được đăng ký.");
+            return new LoginResponse(false, "Sá»‘ Ä‘iá»‡n thoáº¡i Ä‘Ã£ Ä‘Æ°á»£c Ä‘Äƒng kÃ½.");
         }
         if (!verifyOtp(email, PURPOSE_REGISTER, request.getOtpCode())) {
-            return new LoginResponse(false, "Mã OTP không đúng hoặc đã hết hạn.");
+            return new LoginResponse(false, "MÃ£ OTP khÃ´ng Ä‘Ãºng hoáº·c Ä‘Ã£ háº¿t háº¡n.");
         }
 
         User user = new User();
@@ -195,7 +195,7 @@ public class AuthService {
         String jwtToken = jwtService.generateToken(Map.of("token_type", "CUSTOMER"), account);
         return new LoginResponse(
                 true,
-                "Đăng ký thành công.",
+                "ÄÄƒng kÃ½ thÃ nh cÃ´ng.",
                 "Bearer " + jwtToken,
                 savedUser.getUserID(),
                 savedUser.getEmail(),
@@ -207,36 +207,41 @@ public class AuthService {
     public LoginResponse resetPassword(ResetPasswordRequest request) {
         String email = normalizeEmail(request.getEmail());
         if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
-            return new LoginResponse(false, "Mật khẩu mới phải có ít nhất 8 ký tự.");
+            return new LoginResponse(false, "Máº­t kháº©u má»›i pháº£i cÃ³ Ã­t nháº¥t 8 kÃ½ tá»±.");
         }
         if (!verifyOtp(email, PURPOSE_RESET, request.getOtpCode())) {
-            return new LoginResponse(false, "Mã OTP không đúng hoặc đã hết hạn.");
+            return new LoginResponse(false, "MÃ£ OTP khÃ´ng Ä‘Ãºng hoáº·c Ä‘Ã£ háº¿t háº¡n.");
         }
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy khách hàng."));
+                .orElseThrow(() -> new UsernameNotFoundException("KhÃ´ng tÃ¬m tháº¥y khÃ¡ch hÃ ng."));
         Account account = accountRepository.findByUser_UserID(user.getUserID())
-                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy tài khoản."));
+                .orElseThrow(() -> new UsernameNotFoundException("KhÃ´ng tÃ¬m tháº¥y tÃ i khoáº£n."));
         account.setPassword(passwordEncoder.encode(request.getNewPassword()));
         accountRepository.save(account);
-        return new LoginResponse(true, "Đặt lại mật khẩu thành công.");
+        return new LoginResponse(true, "Äáº·t láº¡i máº­t kháº©u thÃ nh cÃ´ng.");
     }
 
     @Transactional
     public void changePassword(ChangePasswordRequest request, Account currentUser) {
         if (!passwordEncoder.matches(request.getOldPassword(), currentUser.getPassword())) {
-            throw new IllegalArgumentException("Mật khẩu cũ không chính xác.");
+            throw new IllegalArgumentException("Máº­t kháº©u cÅ© khÃ´ng chÃ­nh xÃ¡c.");
         }
         if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
-            throw new IllegalArgumentException("Mật khẩu mới phải có ít nhất 8 ký tự.");
+            throw new IllegalArgumentException("Máº­t kháº©u má»›i pháº£i cÃ³ Ã­t nháº¥t 8 kÃ½ tá»±.");
         }
         currentUser.setPassword(passwordEncoder.encode(request.getNewPassword()));
         accountRepository.save(currentUser);
     }
 
     private String createAndSendOtp(String email, String purpose) {
-        boolean mailConfigured = emailService.hasMailCredentials();
-        String code = mailConfigured ? String.format("%06d", secureRandom.nextInt(1_000_000)) : "123456";
+        if (!emailService.hasMailCredentials()) {
+            throw new IllegalStateException(
+                    "Chưa cấu hình dịch vụ gửi mail. Vui lòng cấu hình MAIL_USERNAME/MAIL_PASSWORD hoặc BREVO_API_KEY/RESEND_API_KEY."
+            );
+        }
+
+        String code = String.format("%06d", secureRandom.nextInt(1_000_000));
 
         otpCodeRepository.findByEmailAndPurposeAndUsedFalse(email, purpose)
                 .forEach(existingOtp -> {
@@ -251,13 +256,8 @@ public class AuthService {
         otpCode.setExpiresAt(LocalDateTime.now().plusMinutes(OTP_TTL_MINUTES));
         otpCodeRepository.save(otpCode);
 
-        if (mailConfigured) {
-            emailService.sendOtpEmail(email, code, purpose, OTP_TTL_MINUTES);
-            return "Mã OTP đã được gửi đến email của bạn.";
-        }
-
-        System.out.println("Mail credentials are missing. Using development OTP " + code + " for " + email);
-        return "Chưa cấu hình mail SMTP. Dùng mã OTP tạm thời: " + code;
+        emailService.sendOtpEmail(email, code, purpose, OTP_TTL_MINUTES);
+        return "Mã OTP đã được gửi đến email của bạn.";
     }
 
     private boolean verifyOtp(String email, String purpose, String code) {
@@ -287,11 +287,11 @@ public class AuthService {
 
     private String normalizeEmail(String email) {
         if (email == null) {
-            throw new IllegalArgumentException("Email là bắt buộc.");
+            throw new IllegalArgumentException("Email lÃ  báº¯t buá»™c.");
         }
         String normalized = email.trim().toLowerCase(Locale.ROOT);
         if (!EMAIL_PATTERN.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("Email không hợp lệ.");
+            throw new IllegalArgumentException("Email khÃ´ng há»£p lá»‡.");
         }
         return normalized;
     }
@@ -310,3 +310,4 @@ public class AuthService {
         return digits;
     }
 }
+

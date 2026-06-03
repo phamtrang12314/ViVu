@@ -4,8 +4,10 @@ import com.vivugo.backend.model.Review;
 import com.vivugo.backend.model.Tour;
 import com.vivugo.backend.model.User;
 import com.vivugo.backend.model.enums.ReviewStatus;
+import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,6 +28,13 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
             Pageable pageable
     );
     Page<Review> findByStatus(ReviewStatus status, Pageable pageable);
+
+    long countByStatus(ReviewStatus status);
+
+    long countByStatusAndCreatedAtBetween(ReviewStatus status, LocalDateTime from, LocalDateTime to);
+
+    @EntityGraph(attributePaths = {"user", "tour"})
+    Page<Review> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     boolean existsByUserAndTour(User user, Tour tour);
 }

@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import {
@@ -28,6 +28,7 @@ import TourReviewSection from '../../components/TourReviewSection'
 import TourCard from '../../components/TourCard'
 import { buildTourDetailImageSet } from '../../utils/tourVisuals'
 import { formatCurrency, resolveAssetUrl } from '../../utils/utils'
+import { getVivugoSessionId } from '../../utils/aiSession'
 import type { TourDetails } from '../../types/tour'
 import { AppContext } from '../../contexts/app.context'
 import { favoriteApi } from '../../apis/favorite.api'
@@ -112,6 +113,63 @@ const theTienIchLichTrinh = [
   { title: 'Hỗ trợ', subtitle: 'Xác nhận nhanh', icon: FaHeadset }
 ]
 
+const getYouTubeEmbedUrl = (url: URL) => {
+  const host = url.hostname.toLowerCase()
+
+  if (host === 'youtu.be') {
+    const id = url.pathname.split('/').filter(Boolean)[0]
+    return id ? `https://www.youtube-nocookie.com/embed/${id}` : null
+  }
+
+  if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
+    if (url.pathname === '/watch') {
+      const id = url.searchParams.get('v')
+      return id ? `https://www.youtube-nocookie.com/embed/${id}` : null
+    }
+
+    const segments = url.pathname.split('/').filter(Boolean)
+    if (segments[0] === 'shorts' || segments[0] === 'embed') {
+      const id = segments[1]
+      return id ? `https://www.youtube-nocookie.com/embed/${id}` : null
+    }
+  }
+
+  return null
+}
+
+const getTikTokEmbedUrl = (url: URL) => {
+  const host = url.hostname.toLowerCase()
+  if (host !== 'tiktok.com' && !host.endsWith('.tiktok.com')) return null
+
+  const segments = url.pathname.split('/').filter(Boolean)
+  const videoIndex = segments.findIndex((segment) => segment === 'video')
+  const videoId = videoIndex >= 0 ? segments[videoIndex + 1] : null
+  if (!videoId) return null
+
+  return `https://www.tiktok.com/embed/v2/${videoId}`
+}
+
+const extractExtension = (url: string) => {
+  const clean = url.split('?')[0].split('#')[0]
+  const lastDot = clean.lastIndexOf('.')
+  if (lastDot < 0) return ''
+  return clean.slice(lastDot + 1).toLowerCase()
+}
+
+const isDirectVideoUrl = (url?: string | null) =>
+  !!url && ['mp4', 'webm', 'mov', 'm4v'].includes(extractExtension(url))
+
+const getEmbedVideoUrl = (videoUrl?: string | null) => {
+  if (!videoUrl) return null
+
+  try {
+    const parsed = new URL(videoUrl)
+    return getYouTubeEmbedUrl(parsed) || getTikTokEmbedUrl(parsed)
+  } catch {
+    return null
+  }
+}
+
 export default function TourDetailScreen() {
   const { id } = useParams()
   const queryClient = useQueryClient()
@@ -132,10 +190,24 @@ export default function TourDetailScreen() {
     queryFn: () => tourApi.getTrendingTours(8)
   })
 
+  const { data: personalizedToursData } = useQuery({
+    queryKey: ['tour-personalized', id],
+    queryFn: () => tourApi.getPersonalizedRecommendations(getVivugoSessionId(), 8),
+    enabled: Boolean(id)
+  })
+
   const addFavoriteMutation = useMutation({ mutationFn: favoriteApi.addFavorite })
   const removeFavoriteMutation = useMutation({ mutationFn: favoriteApi.removeFavorite })
 
   const tour = data?.data
+  const tourReviewVideoUrl = tour?.reviewVideoUrl || null
+  const tourReviewEmbedUrl = getEmbedVideoUrl(tourReviewVideoUrl)
+
+  useEffect(() => {
+    if (!tour?.tourID) return
+    tourApi.trackTourView(tour.tourID, getVivugoSessionId()).catch(() => undefined)
+  }, [tour?.tourID])
+
   const detailImages = useMemo(() => buildTourDetailImageSet(tour), [tour])
   const heroImage = detailImages[activeHeroImageIndex] || detailImages[0]
   const galleryImage = detailImages[activeGalleryImageIndex] || detailImages[0]
@@ -145,9 +217,13 @@ export default function TourDetailScreen() {
   )
 
   const tourGoiY = useMemo(() => {
+    const personalizedTours = personalizedToursData?.data?.tours || []
+    if (personalizedTours.length > 0) {
+      return personalizedTours.filter((item) => item.tourID !== id).slice(0, 4)
+    }
     if (!suggestedToursData?.data) return []
     return suggestedToursData.data.filter((item) => item.tourID !== id).slice(0, 4)
-  }, [suggestedToursData?.data, id])
+  }, [personalizedToursData?.data?.tours, suggestedToursData?.data, id])
 
   const isLiked = tour ? favoriteIds.has(tour.tourID) : false
   const isFavoriteProcessing = addFavoriteMutation.isPending || removeFavoriteMutation.isPending
@@ -512,6 +588,37 @@ export default function TourDetailScreen() {
                   )
                 })}
               </div>
+
+              {tourReviewVideoUrl && (
+                <div className="mt-8 rounded-2xl border border-white/20 bg-white/[0.03] p-4 md:p-5">
+                  <h4 className="mb-3 text-2xl font-bold text-white">Video Review Tour</h4>
+                  {isDirectVideoUrl(tourReviewVideoUrl) ? (
+                    <video controls preload="metadata" className="w-full rounded-xl bg-black">
+                      <source src={resolveAssetUrl(tourReviewVideoUrl, tourReviewVideoUrl)} />
+                    </video>
+                  ) : tourReviewEmbedUrl ? (
+                    <div className="relative w-full overflow-hidden rounded-xl pt-[56.25%]">
+                      <iframe
+                        src={tourReviewEmbedUrl}
+                        title={`Video review tour ${tour.title}`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        loading="lazy"
+                        className="absolute left-0 top-0 h-full w-full"
+                      />
+                    </div>
+                  ) : (
+                    <a
+                      href={tourReviewVideoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex text-sm font-semibold text-amber-300 hover:text-amber-200"
+                    >
+                      Xem video review tour
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
