@@ -6,6 +6,12 @@ RUN npm install
 
 COPY . .
 RUN npm run build
+grgeg
+èdcgrfvd
+fedcwads
+ferdrgvdasdv
+ádcgrf
+rewf
 
 FROM nginx:alpine
 
