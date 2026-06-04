@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
 import { CalendarDays, MapPin, Search, Users } from 'lucide-react'
 import { resolveAssetUrl } from '../../utils/utils'
 
@@ -35,18 +34,13 @@ export default function HeroSection() {
 
   return (
     <section className="relative min-h-[92vh] overflow-hidden">
-      <AnimatePresence mode="wait">
-        <motion.img
+      <img
           key={activeImage}
           src={activeImage}
           alt="Khám phá Việt Nam"
-          className="absolute inset-0 h-full w-full object-cover"
-          initial={{ opacity: 0, x: 90 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -90 }}
-          transition={{ duration: 0.9, ease: 'easeInOut' }}
+          className="absolute inset-0 h-full w-full animate-hero-fade object-cover"
+          fetchPriority="high"
         />
-      </AnimatePresence>
 
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900/55 via-slate-800/35 to-slate-900/55" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent via-slate-100/20 to-white/95 backdrop-blur-[1px]" />

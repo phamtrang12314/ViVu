@@ -5,7 +5,6 @@ import { tourApi } from '../../apis/tour'
 import TourCard from '../../components/TourCard'
 import TourFilterSection from '../../components/TourFilterSection'
 import type { Tour, TourListParams } from '../../types/tour'
-import { omitBy, isUndefined } from 'lodash'
 import Button from '../../components/Button'
 import { destinationApi } from '../../apis/destination'
 import { useMemo } from 'react'
@@ -26,6 +25,9 @@ type ParsedTourParams = {
   duration_min?: number
   duration_max?: number
 }
+
+const removeUndefined = <T extends Record<string, unknown>>(value: T) =>
+  Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as Partial<T>
 
 const parseSearchParams = (searchParams: URLSearchParams): ParsedTourParams => {
   const params = {
@@ -54,27 +56,24 @@ const parseSearchParams = (searchParams: URLSearchParams): ParsedTourParams => {
       ? Number(searchParams.get('duration_max'))
       : undefined
   }
-  return omitBy(params, isUndefined) as ParsedTourParams
+  return removeUndefined(params) as ParsedTourParams
 }
 
 const toApiParams = (p: ParsedTourParams): TourListParams =>
-  omitBy(
-    {
-      page: p.page,
-      size: p.size,
-      sort: p.sort,
-      search: p.search,
-      destination_id: p.destination_id,
-      tour_type_id: p.tour_type_id,
-      region: p.region,
-      price_min: p.priceMin,
-      price_max: p.priceMax,
-      deals_only: p.deals_only,
-      duration_min: p.duration_min,
-      duration_max: p.duration_max
-    },
-    isUndefined
-  ) as TourListParams
+  removeUndefined({
+    page: p.page,
+    size: p.size,
+    sort: p.sort,
+    search: p.search,
+    destination_id: p.destination_id,
+    tour_type_id: p.tour_type_id,
+    region: p.region,
+    price_min: p.priceMin,
+    price_max: p.priceMax,
+    deals_only: p.deals_only,
+    duration_min: p.duration_min,
+    duration_max: p.duration_max
+  }) as TourListParams
 
 export default function TourScreen() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -113,7 +112,7 @@ export default function TourScreen() {
       region: regionValue,
       page: 0
     }
-    const cleanedParams = omitBy(newParams, isUndefined)
+    const cleanedParams = removeUndefined(newParams)
     setSearchParams(cleanedParams as any)
   }
 

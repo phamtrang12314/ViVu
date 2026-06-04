@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-toastify'
 import type { AxiosError } from 'axios'
-import { motion } from 'framer-motion'
 import { FaMapMarkerAlt, FaStar, FaClock, FaHeart, FaBolt } from 'react-icons/fa'
 import { BusFront, Building2, Clock3, MapPin, UtensilsCrossed, CheckCircle2 } from 'lucide-react'
 import type { Tour } from '../../types/tour'
@@ -133,9 +132,7 @@ export default function TourCard({
   const imageHeight = isFeatured ? 'h-72 md:h-80' : 'h-60'
 
   return (
-    <motion.div
-      whileHover={{ y: -6, scale: 1.018 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+    <div
       className={cardClass}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -170,18 +167,17 @@ export default function TourCard({
         )}
 
         {!isFavoritePage && (
-          <motion.button
-            whileTap={{ scale: 0.85 }}
+          <button
             onClick={handleFavoriteClick}
             disabled={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
-            className={`absolute right-4 top-4 z-10 rounded-full bg-white/70 p-2.5 shadow-sm backdrop-blur-md transition-colors
+            className={`absolute right-4 top-4 z-10 rounded-full bg-white/70 p-2.5 shadow-sm backdrop-blur-md transition active:scale-90
               ${isLiked ? 'bg-white text-red-500' : 'text-gray-500 hover:bg-white hover:text-red-500'}
               ${addFavoriteMutation.isPending || removeFavoriteMutation.isPending ? 'cursor-not-allowed opacity-50' : ''}
             `}
             aria-label="Yêu thích"
           >
             <FaHeart size={18} className={isLiked ? 'animate-pulse' : ''} />
-          </motion.button>
+          </button>
         )}
 
         {tour.tourTypeName && !isTrending && (
@@ -332,6 +328,6 @@ export default function TourCard({
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

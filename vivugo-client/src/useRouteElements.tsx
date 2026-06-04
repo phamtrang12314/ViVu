@@ -1,129 +1,91 @@
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, useRoutes } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout'
-import HomeScreen from './screens/HomeScreen/HomeScreen'
-import TourScreen from './screens/TourScreen'
-import DestinationScreen from './screens/DestinationScreen'
-import AboutScreen from './screens/AboutScreen'
-import ContactScreen from './screens/ContactScreen'
-import LoginScreen from './screens/LoginScreen'
-import RegisterScreen from './screens/RegisterScreen'
-import ForgotPasswordScreen from './screens/ForgotPasswordScreen'
-import TourDetailScreen from './screens/TourDetailScreen'
-import AccountLayout from './screens/Account/layouts/AccountLayout'
-import Profile from './screens/Account/pages/Profile'
-import ChangePassword from './screens/Account/pages/ChangePassword'
-import HistoryTour from './screens/Account/pages/HistoryTour'
-import FavouriteTour from './screens/Account/pages/FavouriteTour'
-import PaymentScreen from './screens/PaymentScreen/PaymentScreen'
-import RefundPolicyScreen from './screens/RefundPolicyScreen'
-import TravelGuideArticleScreen from './screens/TravelGuideArticleScreen'
+
+const HomeScreen = lazy(() => import('./screens/HomeScreen/HomeScreen'))
+const TourScreen = lazy(() => import('./screens/TourScreen'))
+const DestinationScreen = lazy(() => import('./screens/DestinationScreen'))
+const AboutScreen = lazy(() => import('./screens/AboutScreen'))
+const ContactScreen = lazy(() => import('./screens/ContactScreen'))
+const LoginScreen = lazy(() => import('./screens/LoginScreen'))
+const RegisterScreen = lazy(() => import('./screens/RegisterScreen'))
+const ForgotPasswordScreen = lazy(() => import('./screens/ForgotPasswordScreen'))
+const TourDetailScreen = lazy(() => import('./screens/TourDetailScreen'))
+const AccountLayout = lazy(() => import('./screens/Account/layouts/AccountLayout'))
+const Profile = lazy(() => import('./screens/Account/pages/Profile'))
+const ChangePassword = lazy(() => import('./screens/Account/pages/ChangePassword'))
+const HistoryTour = lazy(() => import('./screens/Account/pages/HistoryTour'))
+const FavouriteTour = lazy(() => import('./screens/Account/pages/FavouriteTour'))
+const PaymentScreen = lazy(() => import('./screens/PaymentScreen/PaymentScreen'))
+const RefundPolicyScreen = lazy(() => import('./screens/RefundPolicyScreen'))
+const TravelGuideArticleScreen = lazy(() => import('./screens/TravelGuideArticleScreen'))
+
+const pageFallback = (
+  <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-semibold text-slate-500">
+    Đang tải...
+  </div>
+)
+
+const withPage = (children: ReactNode) => (
+  <MainLayout>
+    <Suspense fallback={pageFallback}>{children}</Suspense>
+  </MainLayout>
+)
 
 export default function useRouteElements() {
   return useRoutes([
     {
       path: '/',
       index: true,
-      element: (
-        <MainLayout>
-          <HomeScreen />
-        </MainLayout>
-      )
+      element: withPage(<HomeScreen />)
     },
     {
       path: '/login',
-      element: (
-        <MainLayout>
-          <LoginScreen />
-        </MainLayout>
-      )
+      element: withPage(<LoginScreen />)
     },
     {
       path: '/register',
-      element: (
-        <MainLayout>
-          <RegisterScreen />
-        </MainLayout>
-      )
+      element: withPage(<RegisterScreen />)
     },
     {
       path: '/forgot-password',
-      element: (
-        <MainLayout>
-          <ForgotPasswordScreen />
-        </MainLayout>
-      )
+      element: withPage(<ForgotPasswordScreen />)
     },
     {
       path: '/tours',
-      element: (
-        <MainLayout>
-          <TourScreen />
-        </MainLayout>
-      )
+      element: withPage(<TourScreen />)
     },
     {
       path: '/tours/:id',
-      element: (
-        <MainLayout>
-          <TourDetailScreen />
-        </MainLayout>
-      )
+      element: withPage(<TourDetailScreen />)
     },
     {
       path: '/payment/:id',
-      element: (
-        <MainLayout>
-          <PaymentScreen />
-        </MainLayout>
-      )
+      element: withPage(<PaymentScreen />)
     },
     {
       path: '/refund-policy',
-      element: (
-        <MainLayout>
-          <RefundPolicyScreen />
-        </MainLayout>
-      )
+      element: withPage(<RefundPolicyScreen />)
     },
     {
       path: '/cam-nang/:slug',
-      element: (
-        <MainLayout>
-          <TravelGuideArticleScreen />
-        </MainLayout>
-      )
+      element: withPage(<TravelGuideArticleScreen />)
     },
     {
       path: '/destinations',
-      element: (
-        <MainLayout>
-          <DestinationScreen />
-        </MainLayout>
-      )
+      element: withPage(<DestinationScreen />)
     },
     {
       path: '/about',
-      element: (
-        <MainLayout>
-          <AboutScreen />
-        </MainLayout>
-      )
+      element: withPage(<AboutScreen />)
     },
     {
       path: '/contact',
-      element: (
-        <MainLayout>
-          <ContactScreen />
-        </MainLayout>
-      )
+      element: withPage(<ContactScreen />)
     },
     {
       path: '/account',
-      element: (
-        <MainLayout>
-          <AccountLayout />
-        </MainLayout>
-      ),
+      element: withPage(<AccountLayout />),
       children: [
         { index: true, element: <Navigate to="/account/profile" replace /> },
         { path: 'profile', element: <Profile /> },

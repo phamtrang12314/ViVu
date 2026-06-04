@@ -14,7 +14,7 @@ export const resolveAssetUrl = (url?: string, fallback = '') => {
     const trimmedUrl = url.trim();
     if (/^(https?:|data:|blob:)/i.test(trimmedUrl)) return trimmedUrl;
 
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api/';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/';
     const backendOrigin = apiBaseUrl
         .trim()
         .replace(/\/+$/, '')

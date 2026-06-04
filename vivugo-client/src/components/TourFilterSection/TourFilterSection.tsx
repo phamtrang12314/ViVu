@@ -7,7 +7,6 @@ import { useForm, type SubmitHandler } from 'react-hook-form'
 import { createSearchParams, useNavigate } from 'react-router-dom'
 import { tourTypeApi } from '../../apis/tourType.api'
 import { destinationApi } from '../../apis/destination'
-import { omitBy, isUndefined, isEqual, debounce } from 'lodash'
 
 // Import các Icon hiện đại
 import {
@@ -24,6 +23,19 @@ type FormData = {
   destination_id?: string
   tour_type_id?: string
   sort?: string
+}
+
+const compactParams = <T extends Record<string, unknown>>(value?: T) =>
+  Object.fromEntries(Object.entries(value || {}).filter(([, item]) => item !== undefined && item !== '')) as Partial<T>
+
+const shallowEqual = (a?: Record<string, unknown>, b?: Record<string, unknown>) => {
+  const left = compactParams(a)
+  const right = compactParams(b)
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)])
+  for (const key of keys) {
+    if (left[key] !== right[key]) return false
+  }
+  return true
 }
 
 interface Props {
@@ -51,34 +63,34 @@ export default function TourFilterSection({ showAdvancedFilters = false, default
   })
 
   useEffect(() => {
-    if (!isEqual(defaultValues, watch())) {
+    if (!shallowEqual(defaultValues, watch())) {
       reset(defaultValues)
     }
   }, [defaultValues, reset, watch])
 
-  const debouncedNavigate = useMemo(
-    () => debounce((newParams: TourListParams) => {
-      navigate({
-        pathname: '/tours',
-        search: createSearchParams(newParams as any).toString()
-      })
-    }, 500),
-    [navigate]
-  )
+  const debouncedNavigate = useMemo(() => {
+    let timeout: number | undefined
+    const run = (newParams: TourListParams) => {
+      window.clearTimeout(timeout)
+      timeout = window.setTimeout(() => {
+        navigate({
+          pathname: '/tours',
+          search: createSearchParams(newParams as any).toString()
+        })
+      }, 500)
+    }
+    run.cancel = () => window.clearTimeout(timeout)
+    return run
+  }, [navigate])
 
   useEffect(() => {
     if (!isMounted.current) {
       isMounted.current = true
-      const initialCleanParams = omitBy(watchedValues, (v) => isUndefined(v) || v === '')
-      const defaultCleanParams = omitBy(defaultValues, (v) => isUndefined(v) || v === '')
-      if (isEqual(initialCleanParams, defaultCleanParams)) {
+      if (shallowEqual(watchedValues, defaultValues)) {
         return
       }
     }
-    const params: TourListParams = omitBy(
-      { ...watchedValues },
-      (value) => isUndefined(value) || value === ''
-    )
+    const params = compactParams({ ...watchedValues }) as TourListParams
     debouncedNavigate(params)
     return () => {
       debouncedNavigate.cancel()
@@ -86,10 +98,7 @@ export default function TourFilterSection({ showAdvancedFilters = false, default
   }, [watchedValues, debouncedNavigate, defaultValues])
 
   const onSubmit: SubmitHandler<FormData> = (data) => {
-    const params: TourListParams = omitBy(
-      { ...data },
-      (value) => isUndefined(value) || value === ''
-    )
+    const params = compactParams({ ...data }) as TourListParams
     debouncedNavigate.cancel()
     navigate({
       pathname: '/tours',

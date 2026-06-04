@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import {
   FaShieldAlt,
   FaTag,
@@ -208,9 +207,7 @@ function Newsletter() {
   return (
     <AnimateSection className="bg-white py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          whileInView={{ scale: [0.98, 1] }}
-          viewport={{ once: true }}
+        <div
           className="vivugo-gradient-brand relative overflow-hidden rounded-[var(--vivugo-radius)] p-10 text-center text-white shadow-2xl md:p-14"
         >
           <FaEnvelope className="mx-auto mb-4 text-4xl opacity-80" />
@@ -230,7 +227,7 @@ function Newsletter() {
               Đăng ký ngay
             </button>
           </form>
-        </motion.div>
+        </div>
       </div>
     </AnimateSection>
   )

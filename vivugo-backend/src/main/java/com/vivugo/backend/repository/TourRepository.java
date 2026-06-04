@@ -37,5 +37,12 @@ public interface TourRepository extends JpaRepository<Tour, String>, JpaSpecific
 
     List<Tour> findByStatus(TourStatus status);
 
+    @Query("SELECT DISTINCT t FROM Tour t " +
+            "LEFT JOIN FETCH t.tourType " +
+            "LEFT JOIN FETCH t.tourDestinations td " +
+            "LEFT JOIN FETCH td.destination " +
+            "WHERE t.status = :status")
+    List<Tour> findChatCandidatesByStatus(@Param("status") TourStatus status);
+
     List<Tour> findByTitleContainingIgnoreCase(String keyword);
 }

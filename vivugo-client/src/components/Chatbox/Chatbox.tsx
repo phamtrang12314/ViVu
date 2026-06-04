@@ -1,14 +1,14 @@
 import http from '../../utils/http'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageCircle, X, Send, Bot, User, PhoneCall, MessageSquareText } from 'lucide-react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { resolveAssetUrl } from '../../utils/utils'
 import { getVivugoSessionId } from '../../utils/aiSession'
 import { AppContext } from '../../contexts/app.context'
 import { getProfile } from '../../apis/auth.api'
-import { contactApi } from '../../apis/contact.api'
+import { contactApi, type SupportMessage } from '../../apis/contact.api'
 
 interface MiniTour {
   tourID: string
@@ -28,6 +28,8 @@ const SUPPORT_NAME_KEY = 'vivugo_support_name'
 const SUPPORT_EMAIL_KEY = 'vivugo_support_email'
 const SUPPORT_PHONE_KEY = 'vivugo_support_phone'
 
+const getSupportStorageKey = (baseKey: string, identity: string) => `${baseKey}:${identity}`
+
 const buildAvatarUrl = (nameOrEmail?: string) => {
   const name = nameOrEmail?.trim() || 'Khách hàng'
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=64748b&color=fff&size=128&bold=true`
@@ -35,6 +37,7 @@ const buildAvatarUrl = (nameOrEmail?: string) => {
 
 export default function Chatbox() {
   const { isAuthenticated, profile } = useContext(AppContext)
+  const queryClient = useQueryClient()
   const [isOpen, setIsOpen] = useState(false)
   const [chatMode, setChatMode] = useState<'ai' | 'support'>('ai')
   const [messages, setMessages] = useState<AiMessage[]>([
@@ -45,10 +48,11 @@ export default function Chatbox() {
   ])
   const [input, setInput] = useState('')
   const [supportInput, setSupportInput] = useState('')
-  const [supportName, setSupportName] = useState(localStorage.getItem(SUPPORT_NAME_KEY) || '')
-  const [supportEmail, setSupportEmail] = useState(localStorage.getItem(SUPPORT_EMAIL_KEY) || '')
-  const [supportPhone, setSupportPhone] = useState(localStorage.getItem(SUPPORT_PHONE_KEY) || '')
-  const [supportConversationId, setSupportConversationId] = useState(localStorage.getItem(SUPPORT_CONVERSATION_KEY) || '')
+  const [supportName, setSupportName] = useState('')
+  const [supportEmail, setSupportEmail] = useState('')
+  const [supportPhone, setSupportPhone] = useState('')
+  const [supportConversationId, setSupportConversationId] = useState('')
+  const [pendingSupportMessages, setPendingSupportMessages] = useState<SupportMessage[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const { data: userData } = useQuery({
@@ -63,11 +67,33 @@ export default function Chatbox() {
     buildAvatarUrl(userData?.name || profile?.email)
   )
 
+  const supportStorageIdentity = useMemo(() => (
+    userData?.userID || profile?.userID || userData?.email || profile?.email || 'guest'
+  ), [userData?.userID, profile?.userID, userData?.email, profile?.email])
+
+  const supportStorageKeys = useMemo(() => ({
+    conversation: getSupportStorageKey(SUPPORT_CONVERSATION_KEY, supportStorageIdentity),
+    name: getSupportStorageKey(SUPPORT_NAME_KEY, supportStorageIdentity),
+    email: getSupportStorageKey(SUPPORT_EMAIL_KEY, supportStorageIdentity),
+    phone: getSupportStorageKey(SUPPORT_PHONE_KEY, supportStorageIdentity)
+  }), [supportStorageIdentity])
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages, isOpen, chatMode])
+    setSupportConversationId(localStorage.getItem(supportStorageKeys.conversation) || '')
+    setSupportName(localStorage.getItem(supportStorageKeys.name) || userData?.name || '')
+    setSupportEmail(localStorage.getItem(supportStorageKeys.email) || userData?.email || profile?.email || '')
+    setSupportPhone(localStorage.getItem(supportStorageKeys.phone) || userData?.phoneNumber || '')
+    setPendingSupportMessages([])
+  }, [
+    supportStorageKeys.conversation,
+    supportStorageKeys.name,
+    supportStorageKeys.email,
+    supportStorageKeys.phone,
+    userData?.name,
+    userData?.email,
+    userData?.phoneNumber,
+    profile?.email
+  ])
 
   const chatMutation = useMutation({
     mutationFn: async (msg: string) => {
@@ -80,7 +106,7 @@ export default function Chatbox() {
       const res = await http.post(
         'ai/chat',
         { messages: chatHistory, sessionId: getVivugoSessionId() },
-        { timeout: 12000 }
+        { timeout: 30000 }
       )
       return res.data
     },
@@ -106,8 +132,40 @@ export default function Chatbox() {
     queryKey: ['support-messages', supportConversationId],
     queryFn: () => contactApi.getSupportMessages(supportConversationId).then((res) => res.data),
     enabled: Boolean(isAuthenticated && supportConversationId && chatMode === 'support' && isOpen),
-    refetchInterval: 5000
+    refetchInterval: isOpen && chatMode === 'support' ? 2000 : false,
+    refetchIntervalInBackground: false
   })
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages, isOpen, chatMode, supportMessages, pendingSupportMessages])
+
+  const displayedSupportMessages = useMemo(() => {
+    if (pendingSupportMessages.length === 0) return supportMessages
+    const remoteIds = new Set(supportMessages.map((item) => item.messageId))
+    return [
+      ...supportMessages,
+      ...pendingSupportMessages.filter((item) => !remoteIds.has(item.messageId))
+    ]
+  }, [supportMessages, pendingSupportMessages])
+
+  const addOptimisticSupportMessage = (text: string, conversationId = supportConversationId) => {
+    if (!conversationId) return
+    const optimisticMessage: SupportMessage = {
+      messageId: `local-${Date.now()}`,
+      conversationId,
+      senderType: 'CUSTOMER',
+      senderName: userData?.name || profile?.email || supportName || 'Bạn',
+      content: text,
+      createdAt: new Date().toISOString()
+    }
+    queryClient.setQueryData<SupportMessage[]>(['support-messages', conversationId], (oldMessages = []) => [
+      ...oldMessages,
+      optimisticMessage
+    ])
+  }
 
   const startSupportMutation = useMutation({
     mutationFn: async (firstMessage: string) => {
@@ -119,15 +177,19 @@ export default function Chatbox() {
         message: firstMessage
       }).then((res) => res.data)
     },
-    onSuccess: async (conversation) => {
+    onSuccess: async (conversation, firstMessage) => {
       if (!conversation.conversationId) return
       setSupportConversationId(conversation.conversationId)
-      localStorage.setItem(SUPPORT_CONVERSATION_KEY, conversation.conversationId)
-      localStorage.setItem(SUPPORT_NAME_KEY, supportName)
-      localStorage.setItem(SUPPORT_EMAIL_KEY, supportEmail || userData?.email || profile?.email || '')
-      localStorage.setItem(SUPPORT_PHONE_KEY, supportPhone)
-      setSupportInput('')
+      localStorage.setItem(supportStorageKeys.conversation, conversation.conversationId)
+      localStorage.setItem(supportStorageKeys.name, supportName || userData?.name || '')
+      localStorage.setItem(supportStorageKeys.email, supportEmail || userData?.email || profile?.email || '')
+      localStorage.setItem(supportStorageKeys.phone, supportPhone || userData?.phoneNumber || '')
+      setPendingSupportMessages([])
+      addOptimisticSupportMessage(firstMessage, conversation.conversationId)
       await refetchSupportMessages()
+    },
+    onError: () => {
+      setPendingSupportMessages([])
     }
   })
 
@@ -135,9 +197,19 @@ export default function Chatbox() {
     mutationFn: async (text: string) => {
       return contactApi.sendSupportMessage(supportConversationId, text).then((res) => res.data)
     },
-    onSuccess: async () => {
-      setSupportInput('')
+    onSuccess: async (savedMessage) => {
+      queryClient.setQueryData<SupportMessage[]>(['support-messages', supportConversationId], (oldMessages = []) => {
+        const withoutLocalCopy = oldMessages.filter(
+          (item) => !(item.messageId.startsWith('local-') && item.content === savedMessage.content)
+        )
+        return [...withoutLocalCopy, savedMessage]
+      })
       await refetchSupportMessages()
+    },
+    onError: (_error, text) => {
+      queryClient.setQueryData<SupportMessage[]>(['support-messages', supportConversationId], (oldMessages = []) =>
+        oldMessages.filter((item) => !(item.messageId.startsWith('local-') && item.content === text))
+      )
     }
   })
 
@@ -162,10 +234,23 @@ export default function Chatbox() {
 
     if (!supportConversationId) {
       if (!supportCanStart) return
+      setSupportInput('')
+      setPendingSupportMessages([
+        {
+          messageId: `pending-start-${Date.now()}`,
+          conversationId: 'pending',
+          senderType: 'CUSTOMER',
+          senderName: userData?.name || profile?.email || supportName || 'Bạn',
+          content: text,
+          createdAt: new Date().toISOString()
+        }
+      ])
       startSupportMutation.mutate(text)
       return
     }
 
+    setSupportInput('')
+    addOptimisticSupportMessage(text)
     sendSupportMutation.mutate(text)
   }
 
@@ -335,7 +420,7 @@ export default function Chatbox() {
               </>
             ) : (
               <>
-                <div className='flex-1 overflow-y-auto bg-gray-50 p-4'>
+                <div ref={scrollRef} className='flex-1 overflow-y-auto bg-gray-50 p-4 scroll-smooth'>
                   {!isAuthenticated && (
                     <div className='mb-4 rounded-xl border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-600'>
                       <p className='font-semibold text-gray-800'>Bạn cần đăng nhập để chat với Admin.</p>
@@ -377,13 +462,13 @@ export default function Chatbox() {
                     </div>
                   )}
 
-                  {supportMessages.length === 0 ? (
+                  {displayedSupportMessages.length === 0 ? (
                     <div className='rounded-xl border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500'>
                       Chưa có tin nhắn. Bạn có thể gửi yêu cầu để admin tư vấn chi tiết.
                     </div>
                   ) : (
                     <div className='space-y-2'>
-                      {supportMessages.map((item) => (
+                      {displayedSupportMessages.map((item) => (
                         <div key={item.messageId} className={`flex ${item.senderType === 'CUSTOMER' ? 'justify-end' : 'justify-start'}`}>
                           <div
                             className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
@@ -416,8 +501,6 @@ export default function Chatbox() {
                       onClick={handleSendSupport}
                       disabled={
                         !supportInput.trim()
-                        || startSupportMutation.isPending
-                        || sendSupportMutation.isPending
                         || (!supportConversationId && !supportCanStart)
                         || !isAuthenticated
                       }

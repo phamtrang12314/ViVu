@@ -5,7 +5,7 @@ import { clearLS, getAccessTokenFromLS, saveAccessTokenToLS, setProfileToLS } fr
 import type { AuthResponse } from '../types/auth.type'
 import type { SimpleProfile } from '../types/user.type'
 
-const normalizeApiBaseUrl = (value = 'http://localhost:8081/api/') => {
+const normalizeApiBaseUrl = (value = '/api/') => {
   const cleanedValue = value.trim().replace(/\/+$/, '')
   return cleanedValue.endsWith('/api') ? `${cleanedValue}/` : `${cleanedValue}/api/`
 }
@@ -27,6 +27,10 @@ class Http {
 
     this.instance.interceptors.request.use(
       (config) => {
+        if (typeof config.url === 'string') {
+          config.url = config.url.replace(/^\/+/, '')
+        }
+
         if (config.method && config.method.toLowerCase() !== 'get') {
           const now = Date.now()
           const oneMinute = 60 * 1000

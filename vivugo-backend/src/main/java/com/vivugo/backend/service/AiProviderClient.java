@@ -17,7 +17,7 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class AiProviderClient {
 
-    private static final int MAX_ATTEMPTS = 3;
+    private static final int MAX_ATTEMPTS = 1;
 
     private final String apiKey;
     private final String chatModel;
@@ -37,13 +37,13 @@ public class AiProviderClient {
         this.apiUrl = apiUrl;
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(9000);
+        factory.setConnectTimeout(3000);
+        factory.setReadTimeout(8000);
         this.restTemplate = new RestTemplate(factory);
     }
 
     public String callCustomerChat(String systemInstruction, List<ChatMessage> messages, String fallback) {
-        return call(chatModel, systemInstruction, messages, 0.35, fallback);
+        return fallback;
     }
 
     public String callAdminAnalysis(String systemInstruction, String prompt, String fallback) {

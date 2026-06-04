@@ -1,9 +1,9 @@
 ﻿import { useMemo, useState } from 'react'
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, Mail, MessageSquareReply, MoreVertical, Phone, Search, Send, X } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { contactAdminApi } from '../../apis/contactAdmin.api'
-import type { ContactMessage, ContactMessageListParams, SupportConversation, SupportMessage } from '../../types/contactAdmin.type'
+import type { ContactMessage, ContactMessageListParams, SupportConversation, SupportConversationListResponse, SupportMessage } from '../../types/contactAdmin.type'
 import { resolveAssetUrl } from '../../../utils/utils'
 
 const MIN_ITEMS_PER_SECTION = 5
@@ -53,7 +53,10 @@ const buildAvatarUrl = (name?: string) => {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}&background=e5edff&color=1d4ed8&size=128&bold=true`
 }
 
+const normalizeCustomerName = (value?: string | null) => (value || '').trim().toLowerCase()
+
 export default function ContactMessageScreen() {
+  const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [inputValue, setInputValue] = useState('')
   const [page, setPage] = useState(0)
@@ -76,7 +79,7 @@ export default function ContactMessageScreen() {
     queryKey: ['admin-contact-messages', queryParams],
     queryFn: () => contactAdminApi.getAllMessages(queryParams).then((res) => res.data),
     placeholderData: keepPreviousData,
-    refetchInterval: 5000
+    refetchInterval: 3000
   })
 
   const { data: conversationsData, isLoading: isConversationsLoading, refetch: refetchConversations } = useQuery({
@@ -85,37 +88,110 @@ export default function ContactMessageScreen() {
       contactAdminApi
         .getConversations({ page, size: PAGE_SIZE, search: searchTerm || undefined })
         .then((res) => res.data),
-    refetchInterval: 5000
+    refetchInterval: 1500
   })
 
   const { data: conversationMessages, refetch: refetchConversationMessages } = useQuery({
     queryKey: ['admin-support-conversation-messages', activeConversationId],
     queryFn: () => contactAdminApi.getConversationMessages(activeConversationId as string).then((res) => res.data),
     enabled: Boolean(activeConversationId),
-    refetchInterval: activeConversationId ? 3000 : false
+    refetchInterval: activeConversationId ? 1000 : false
   })
+
+  const conversationsQueryKey = ['admin-support-conversations', page, searchTerm] as const
+
+  const updateConversationPreview = (conversationId: string, message: string) => {
+    queryClient.setQueryData<SupportConversationListResponse>(conversationsQueryKey, (oldData) => {
+      if (!oldData) return oldData
+      return {
+        ...oldData,
+        content: oldData.content.map((item) =>
+          item.conversationId === conversationId
+            ? {
+                ...item,
+                replied: true,
+                lastMessageAt: new Date().toISOString(),
+                lastMessagePreview: message
+              }
+            : item
+        )
+      }
+    })
+  }
 
   const replyConversationMutation = useMutation({
     mutationFn: (payload: { conversationId: string; message: string }) =>
-      contactAdminApi.replyConversation(payload.conversationId, payload.message),
-    onSuccess: async () => {
-      toast.success('Đã gửi phản hồi hội thoại')
+      contactAdminApi.replyConversation(payload.conversationId, payload.message).then((res) => res.data),
+    onMutate: async (payload) => {
+      const optimisticMessage: SupportMessage = {
+        messageId: `admin-local-${Date.now()}`,
+        conversationId: payload.conversationId,
+        senderType: 'ADMIN',
+        senderName: 'Admin',
+        content: payload.message,
+        createdAt: new Date().toISOString()
+      }
+
       setConversationReply('')
+      setReplyDraft('')
       setReplyingMessageId(null)
+      updateConversationPreview(payload.conversationId, payload.message)
+      queryClient.setQueryData<SupportMessage[]>(
+        ['admin-support-conversation-messages', payload.conversationId],
+        (oldMessages = []) => [...oldMessages, optimisticMessage]
+      )
+
+      return { optimisticMessage }
+    },
+    onSuccess: async (savedMessage, payload, context) => {
+      toast.success('Đã gửi phản hồi hội thoại')
+      queryClient.setQueryData<SupportMessage[]>(
+        ['admin-support-conversation-messages', payload.conversationId],
+        (oldMessages = []) => [
+          ...oldMessages.filter((item) => item.messageId !== context?.optimisticMessage.messageId),
+          savedMessage
+        ]
+      )
       await Promise.all([refetchConversations(), refetchConversationMessages(), refetch()])
     },
-    onError: () => toast.error('Không gửi được phản hồi hội thoại')
+    onError: (error, payload, context) => {
+      queryClient.setQueryData<SupportMessage[]>(
+        ['admin-support-conversation-messages', payload.conversationId],
+        (oldMessages = []) => oldMessages.filter((item) => item.messageId !== context?.optimisticMessage.messageId)
+      )
+      const message = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message
+        || (error as Error)?.message
+        || 'Không gửi được phản hồi hội thoại'
+      toast.error(message)
+      refetchConversations()
+    }
   })
 
   const rawMessages: ContactMessage[] = data?.content || []
-  const activeMessages: SupportMessage[] = conversationMessages || []
+
+  const activeConversation = useMemo(
+    () => (conversationsData?.content || []).find((item) => item.conversationId === activeConversationId) || null,
+    [conversationsData?.content, activeConversationId]
+  )
+
+  const activeMessages: SupportMessage[] = useMemo(() => {
+    const messages = conversationMessages || []
+    const activeCustomerName = normalizeCustomerName(activeConversation?.customerName)
+    if (!activeCustomerName) return messages
+
+    return messages.filter((item) => (
+      item.senderType === 'ADMIN'
+      || normalizeCustomerName(item.senderName) === activeCustomerName
+    ))
+  }, [conversationMessages, activeConversation?.customerName])
 
   const summary = useMemo(() => {
-    const total = rawMessages.length
-    const responded = rawMessages.filter((item) => item.responded).length
+    const conversations = conversationsData?.content || []
+    const total = conversationsData?.totalElements || conversations.length
+    const responded = conversations.filter((item) => item.replied).length
     const waiting = total - responded
     return { total, responded, waiting }
-  }, [rawMessages])
+  }, [conversationsData?.content, conversationsData?.totalElements])
 
   const conversationRows = useMemo(() => {
     const base: SupportConversation[] = conversationsData?.content || []
@@ -135,11 +211,6 @@ export default function ContactMessageScreen() {
     const source = direct.length > 0 ? direct : fallback
     return withMinimumItems(source, MIN_ITEMS_PER_SECTION).slice(0, Math.max(MIN_ITEMS_PER_SECTION, source.length))
   }, [rawMessages])
-
-  const activeConversation = useMemo(
-    () => (conversationsData?.content || []).find((item) => item.conversationId === activeConversationId) || null,
-    [conversationsData?.content, activeConversationId]
-  )
 
   return (
     <div className='min-h-screen bg-gray-50 p-6'>
@@ -336,7 +407,7 @@ export default function ContactMessageScreen() {
                                     Hủy
                                   </button>
                                   <button
-                                    disabled={!replyDraft.trim() || replyConversationMutation.isPending}
+                                    disabled={!replyDraft.trim()}
                                     onClick={() =>
                                       replyConversationMutation.mutate({
                                         conversationId: conversation.conversationId,
@@ -428,7 +499,7 @@ export default function ContactMessageScreen() {
                     value={conversationReply}
                     onChange={(event) => setConversationReply(event.target.value)}
                     onKeyDown={(event) => {
-                      if (event.key === 'Enter' && conversationReply.trim() && !replyConversationMutation.isPending) {
+                      if (event.key === 'Enter' && conversationReply.trim()) {
                         replyConversationMutation.mutate({
                           conversationId: activeConversationId,
                           message: conversationReply.trim()
@@ -439,7 +510,7 @@ export default function ContactMessageScreen() {
                     className='h-9 flex-1 rounded-md border border-gray-300 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-400'
                   />
                   <button
-                    disabled={!conversationReply.trim() || replyConversationMutation.isPending}
+                    disabled={!conversationReply.trim()}
                     onClick={() =>
                       replyConversationMutation.mutate({
                         conversationId: activeConversationId,

@@ -1,6 +1,22 @@
 {
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://backend-production-750a.up.railway.app/api/$1"
+    },
+    {
+      "source": "/images/(.*)",
+      "destination": "https://backend-production-750a.up.railway.app/images/$1"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "https://backend-production-750a.up.railway.app/uploads/$1"
+    },
+    {
+      "source": "/ws/(.*)",
+      "destination": "https://backend-production-750a.up.railway.app/ws/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -45,7 +45,7 @@ public class SupportChatService {
         }
 
         if (conversation == null) {
-            conversation = resolveExistingConversation(request, currentUser).orElseGet(SupportConversation::new);
+            conversation = new SupportConversation();
         }
 
         User linkedUser = currentUser != null ? currentUser.getUser() : null;
@@ -136,18 +136,6 @@ public class SupportChatService {
 
         return supportConversationRepository.findAll(specification, pageable)
                 .map(SupportConversationResponse::fromEntity);
-    }
-
-    private java.util.Optional<SupportConversation> resolveExistingConversation(SupportChatStartRequest request, Account currentUser) {
-        if (currentUser != null && currentUser.getUser() != null) {
-            return supportConversationRepository.findFirstByUser_UserIDOrderByUpdatedAtDesc(currentUser.getUser().getUserID());
-        }
-
-        String email = trimToNull(request.getEmail());
-        if (email != null) {
-            return supportConversationRepository.findFirstByCustomerEmailOrderByUpdatedAtDesc(email);
-        }
-        return java.util.Optional.empty();
     }
 
     private SupportMessage appendMessage(

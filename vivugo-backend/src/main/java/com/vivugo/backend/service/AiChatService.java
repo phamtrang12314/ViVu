@@ -51,6 +51,10 @@ public class AiChatService {
 
         String userQuestion = safe(messages.get(messages.size() - 1).getContent());
         String normalizedQuestion = normalize(userQuestion);
+        String faqReply = answerFaq(normalizedQuestion);
+        if (faqReply != null) {
+            return new ChatResponse(faqReply, List.of());
+        }
         String intent = detectIntent(normalizedQuestion);
 
         List<Map<String, Object>> displayData = new ArrayList<>();
@@ -88,9 +92,11 @@ public class AiChatService {
                         + ", tours=" + result.tours().stream().map(this::tourLine).toList();
             }
             default -> {
-                displayData = recommendationService.recommendForChat(sessionId, authentication, 4)
-                        .stream()
-                        .map(this::summaryToMap)
+                displayData = tourRepository.findChatCandidatesByStatus(TourStatus.ACTIVE).stream()
+                        .filter(this::isCustomerVisibleTour)
+                        .sorted(sortByBudgetAndRanking(null))
+                        .limit(4)
+                        .map(this::tourToMap)
                         .toList();
                 systemInstruction += "\nKhách hỏi chung. Trả lời đúng câu hỏi, sau đó hỏi thêm vùng miền, ngân sách, ngày đi và số người nếu cần.";
                 fallbackReply = "Mình có thể tư vấn tour theo vùng miền, ngân sách, ngày khởi hành và số người đi. Bạn muốn đi miền Bắc, miền Trung hay miền Nam, và ngân sách khoảng bao nhiêu?";
@@ -122,8 +128,78 @@ public class AiChatService {
         return "GENERAL";
     }
 
+    private String answerFaq(String normalizedQuestion) {
+        if (containsAny(normalizedQuestion, "so dien thoai", "hotline", "lien he truc tiep", "goi dien")) {
+            return "Bạn có thể liên hệ ViVuGo qua Hotline 0989471415 hoặc bấm nút Hotline/Zalo ở góc phải màn hình. Nếu cần tư vấn chi tiết về tour, bạn có thể gửi tin nhắn trong mục Chat với Admin.";
+        }
+        if (containsAny(normalizedQuestion, "zalo")) {
+            return "Bạn có thể bấm nút Zalo ở góc phải màn hình để chat nhanh với ViVuGo. Nếu đang ở trang liên hệ, bạn cũng có thể gửi form để admin phản hồi lại trong hệ thống.";
+        }
+        if (containsAny(normalizedQuestion, "dia chi", "van phong", "o dau")) {
+            return "Thông tin văn phòng được hiển thị ở trang Liên hệ. Bạn có thể vào mục Liên hệ để xem địa chỉ, số điện thoại, email và gửi yêu cầu tư vấn trực tiếp.";
+        }
+        if (containsAny(normalizedQuestion, "gio lam viec", "may gio", "thoi gian lam viec")) {
+            return "ViVuGo hỗ trợ online trên website. Với yêu cầu cần admin xử lý, bạn gửi tin nhắn qua Chat với Admin hoặc form Liên hệ; admin sẽ phản hồi sớm nhất khi nhận được yêu cầu.";
+        }
+        if (containsAny(normalizedQuestion, "cach dat tour", "huong dan dat tour", "dat tour nhu the nao", "lam sao dat tour")) {
+            return answerBookingGuide();
+        }
+        if (containsAny(normalizedQuestion, "can dang nhap de dat tour", "dat tour co can dang nhap", "khong dang nhap dat tour")) {
+            return "Bạn nên đăng nhập trước khi đặt tour để hệ thống lưu lịch sử đặt tour, hỗ trợ thanh toán, hủy tour và đánh giá sau chuyến đi. Nếu chưa có tài khoản, hãy đăng ký và xác thực OTP qua email.";
+        }
+        if (containsAny(normalizedQuestion, "thanh toan nhu the nao", "cach thanh toan", "chuyen khoan", "qr", "ma qr")) {
+            return "Sau khi tạo booking, hệ thống chuyển bạn tới màn hình thanh toán. Bạn kiểm tra số tiền, nội dung/mã booking và thực hiện thanh toán theo hướng dẫn. Khi hệ thống ghi nhận giao dịch thành công, trạng thái thanh toán sẽ được cập nhật.";
+        }
+        if (containsAny(normalizedQuestion, "thanh toan roi", "da chuyen khoan", "sao chua xac nhan", "chua cap nhat thanh toan")) {
+            return "Nếu bạn đã thanh toán nhưng booking chưa cập nhật, hãy chờ hệ thống đối soát giao dịch trong ít phút. Nếu vẫn chưa đổi trạng thái, gửi mã booking cho Admin để kiểm tra giao dịch.";
+        }
+        if (containsAny(normalizedQuestion, "lich su dat tour", "xem booking", "xem don dat", "don hang cua toi")) {
+            return "Bạn vào Tài khoản -> Lịch sử đặt tour để xem các booking đã tạo, trạng thái thanh toán, trạng thái tour và thao tác hủy/đánh giá nếu đủ điều kiện.";
+        }
+        if (containsAny(normalizedQuestion, "huy tour", "huy booking", "huy don")) {
+            return "Bạn vào Lịch sử đặt tour, chọn booking cần hủy và gửi yêu cầu hủy kèm lý do. Admin sẽ kiểm tra trạng thái booking, điều kiện tour và xử lý yêu cầu.";
+        }
+        if (containsAny(normalizedQuestion, "hoan tien", "refund", "nhan lai tien")) {
+            return "Việc hoàn tiền phụ thuộc trạng thái booking, thời điểm hủy và chính sách từng tour. Bạn gửi yêu cầu hủy trong Lịch sử đặt tour hoặc nhắn Admin kèm mã booking để được kiểm tra chính xác.";
+        }
+        if (containsAny(normalizedQuestion, "danh gia", "nhan xet", "review", "viet review")) {
+            return "Sau khi tour đủ điều kiện đánh giá, bạn vào Lịch sử đặt tour hoặc trang chi tiết tour để gửi đánh giá/nhận xét. Review có thể cần admin duyệt trước khi hiển thị công khai.";
+        }
+        if (containsAny(normalizedQuestion, "yeu thich", "favorite", "luu tour", "bo thich")) {
+            return "Bạn bấm biểu tượng yêu thích trên thẻ tour hoặc trang chi tiết tour để lưu tour. Các tour đã lưu có thể xem lại trong mục Tài khoản -> Tour yêu thích.";
+        }
+        if (containsAny(normalizedQuestion, "voucher", "ma giam gia", "khuyen mai", "giam gia")) {
+            return "Nếu tour có khuyến mãi hoặc voucher hợp lệ, hệ thống sẽ áp dụng theo điều kiện của chương trình. Bạn nên kiểm tra giá cuối cùng ở màn hình đặt tour trước khi thanh toán.";
+        }
+        if (containsAny(normalizedQuestion, "tre em", "gia tre em", "em be", "nguoi lon")) {
+            return "Giá người lớn và trẻ em có thể khác nhau theo từng tour. Khi đặt tour, bạn nhập số người lớn/trẻ em để hệ thống tính tổng tiền chính xác.";
+        }
+        if (containsAny(normalizedQuestion, "can mang gi", "giay to", "cccd", "can cuoc", "ho chieu")) {
+            return "Bạn nên mang giấy tờ tùy thân như CCCD/hộ chiếu, thông tin booking, thuốc cá nhân và vật dụng phù hợp thời tiết. Với tour biển/đảo hoặc vùng núi, nên chuẩn bị thêm đồ chuyên dụng theo lịch trình.";
+        }
+        if (containsAny(normalizedQuestion, "otp khong ve", "khong nhan otp", "ma otp", "otp sai")) {
+            return "Nếu chưa nhận được OTP, hãy kiểm tra email, mục spam/quảng cáo và đảm bảo nhập đúng email. Nếu OTP hết hạn hoặc sai, bạn gửi lại OTP mới rồi thử xác thực lại.";
+        }
+        if (containsAny(normalizedQuestion, "quen mat khau", "lay lai mat khau", "doi mat khau")) {
+            return answerAuthHelp(normalizedQuestion);
+        }
+        if (containsAny(normalizedQuestion, "dang ky", "tao tai khoan")) {
+            return answerAuthHelp(normalizedQuestion);
+        }
+        if (containsAny(normalizedQuestion, "dang nhap", "login")) {
+            return answerAuthHelp(normalizedQuestion);
+        }
+        if (containsAny(normalizedQuestion, "chat admin", "nhan tin admin", "ho tro admin", "gap admin")) {
+            return "Bạn mở khung chat, chọn tab Chat với Admin, nhập thông tin liên hệ và gửi nội dung cần hỗ trợ. Admin sẽ thấy hội thoại trong trang quản trị và phản hồi lại trực tiếp.";
+        }
+        if (containsAny(normalizedQuestion, "email xac nhan", "gui email", "mail xac nhan", "ve dien tu")) {
+            return "ViVuGo gửi email cho các luồng quan trọng như OTP, xác nhận thanh toán hoặc thông báo booking khi hệ thống có cấu hình email hợp lệ. Nếu không thấy email, hãy kiểm tra spam hoặc nhắn Admin kèm mã booking.";
+        }
+        return null;
+    }
+
     private TourSearchResult searchTours(SearchCriteria criteria, String sessionId, Authentication authentication, int size) {
-        List<Tour> activeTours = tourRepository.findByStatus(TourStatus.ACTIVE).stream()
+        List<Tour> activeTours = tourRepository.findChatCandidatesByStatus(TourStatus.ACTIVE).stream()
                 .filter(this::isCustomerVisibleTour)
                 .toList();
         if (activeTours.isEmpty()) {
@@ -161,16 +237,6 @@ public class AiChatService {
             if (!sameBudget.isEmpty()) {
                 return new TourSearchResult(false, "NO_REGION_MATCH", sameBudget);
             }
-        }
-
-        List<Tour> personalized = recommendationService.getPersonalizedTours(sessionId, authentication, size)
-                .getTours()
-                .stream()
-                .map(summary -> tourRepository.findById(summary.getTourID()).orElse(null))
-                .filter(Objects::nonNull)
-                .toList();
-        if (!personalized.isEmpty()) {
-            return new TourSearchResult(false, "PERSONALIZED_FALLBACK", personalized);
         }
 
         return new TourSearchResult(false, "POPULAR_FALLBACK", activeTours.stream()
@@ -333,20 +399,10 @@ public class AiChatService {
     }
 
     private List<Map<String, Object>> toDisplayData(List<Tour> tours) {
-        return tours.stream().map(tour -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("id", tour.getTourID());
-            map.put("tourID", tour.getTourID());
-            map.put("type", "tour");
-            map.put("title", tour.getTitle());
-            map.put("imageURL", tour.getImageURL());
-            map.put("price", tour.getPriceAdult());
-            map.put("finalPrice", tour.getPriceAdult());
-            return map;
-        }).toList();
+        return tours.stream().map(this::tourToMap).toList();
     }
 
-    private Map<String, Object> summaryToMap(com.vivugo.backend.dto.TourSummaryResponse tour) {
+    private Map<String, Object> tourToMap(Tour tour) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", tour.getTourID());
         map.put("tourID", tour.getTourID());
@@ -354,7 +410,7 @@ public class AiChatService {
         map.put("title", tour.getTitle());
         map.put("imageURL", tour.getImageURL());
         map.put("price", tour.getPriceAdult());
-        map.put("finalPrice", tour.getFinalPrice());
+        map.put("finalPrice", tour.getPriceAdult());
         return map;
     }
 

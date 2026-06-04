@@ -9,6 +9,8 @@ const SUPPORT_NAME_KEY = 'vivugo_support_name'
 const SUPPORT_EMAIL_KEY = 'vivugo_support_email'
 const SUPPORT_PHONE_KEY = 'vivugo_support_phone'
 
+const getSupportStorageKey = (baseKey: string, identity: string) => `${baseKey}:${identity}`
+
 // Dữ liệu mẫu
 const officeLocations = [
   {
@@ -151,10 +153,11 @@ function ContactFormAndOffices() {
       const response = await contactApi.submitMessage({ ...formData, subject })
       const conversationId = response.data?.conversationId
       if (conversationId) {
-        localStorage.setItem(SUPPORT_CONVERSATION_KEY, conversationId)
-        localStorage.setItem(SUPPORT_NAME_KEY, formData.name)
-        localStorage.setItem(SUPPORT_EMAIL_KEY, formData.email)
-        localStorage.setItem(SUPPORT_PHONE_KEY, formData.phone)
+        const supportIdentity = formData.email.trim() || 'guest'
+        localStorage.setItem(getSupportStorageKey(SUPPORT_CONVERSATION_KEY, supportIdentity), conversationId)
+        localStorage.setItem(getSupportStorageKey(SUPPORT_NAME_KEY, supportIdentity), formData.name)
+        localStorage.setItem(getSupportStorageKey(SUPPORT_EMAIL_KEY, supportIdentity), formData.email)
+        localStorage.setItem(getSupportStorageKey(SUPPORT_PHONE_KEY, supportIdentity), formData.phone)
       }
       toast.success('Tin nhắn của bạn đã được gửi thành công! Chúng tôi sẽ phản hồi sớm nhất.')
       setFormData({ name: '', email: '', phone: '', message: '' })

@@ -309,7 +309,7 @@ export default function TourDetailScreen() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <section className="relative left-1/2 right-1/2 w-screen -translate-x-1/2 min-h-screen">
+      <section className="relative min-h-screen w-full">
         <img
           src={resolveAssetUrl(heroImage?.url, '/hero.jpg')}
           alt={heroImage?.caption || tour.title}

@@ -9,7 +9,7 @@ export type BookingRealtimeEvent = {
 }
 
 const getRealtimeUrl = () => {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api/'
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/'
   const url = new URL(apiBaseUrl, window.location.origin)
   const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
   return `${protocol}//${url.host}/ws/realtime`

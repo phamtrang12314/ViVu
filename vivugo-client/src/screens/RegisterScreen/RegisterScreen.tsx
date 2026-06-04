@@ -2,7 +2,6 @@ import { useContext, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { yupResolver } from '@hookform/resolvers/yup'
 import { useForm } from 'react-hook-form'
-import { omit } from 'lodash'
 import { FaArrowLeft, FaCheckCircle, FaPaperPlane, FaUserPlus } from 'react-icons/fa'
 import { Link, useNavigate } from 'react-router-dom'
 import { schema, type Schema } from '../../utils/rules'
@@ -66,7 +65,7 @@ export default function RegisterScreen() {
   }
 
   const onSubmit = handleSubmit((data) => {
-    const body = omit(data, ['confirm_password']) as RegisterPayload
+    const { confirm_password: _confirmPassword, ...body } = data
     registerMutation.mutate(body, {
       onSuccess: (data) => {
         toast.success('Đăng ký tài khoản thành công!', { autoClose: 2000 })

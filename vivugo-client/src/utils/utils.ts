@@ -19,7 +19,7 @@ export const resolveAssetUrl = (url?: string, fallback = '') => {
     return trimmedUrl
   }
 
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api/'
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/'
   const backendOrigin = apiBaseUrl.trim().replace(/\/+$/, '').replace(/\/api$/, '')
   const assetPath = trimmedUrl.startsWith('/') ? trimmedUrl : `/${trimmedUrl}`
 

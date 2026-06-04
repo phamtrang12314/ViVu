@@ -5,7 +5,7 @@ import { clearLS, getAccessTokenFromLS, saveAccessTokenToLS, setProfileToLS } fr
 import type { AuthResponse } from '../types/auth.type'
 import type { SimpleProfile } from '../types/user.type'
 
-const normalizeApiBaseUrl = (value = 'http://localhost:8081/api/') => {
+const normalizeApiBaseUrl = (value = '/api/') => {
   const cleanedValue = value.trim().replace(/\/+$/, '')
   return cleanedValue.endsWith('/api') ? `${cleanedValue}/` : `${cleanedValue}/api/`
 }
