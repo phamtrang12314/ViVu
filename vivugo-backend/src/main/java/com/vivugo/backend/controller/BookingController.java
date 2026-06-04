@@ -2,7 +2,6 @@ package com.vivugo.backend.controller;
 
 import com.vivugo.backend.dto.BookingHistoryResponse;
 import com.vivugo.backend.dto.BookingRequest;
-import com.vivugo.backend.dto.CancelBookingRequest;
 import com.vivugo.backend.model.Account;
 import com.vivugo.backend.model.Booking;
 import com.vivugo.backend.model.enums.PaymentStatus;
@@ -100,9 +99,9 @@ public class BookingController {
     }
 
     @PutMapping("/{id}/cancel-request")
-    public ResponseEntity<?> requestCancel(@PathVariable String id, @RequestBody(required = false) CancelBookingRequest request) {
+    public ResponseEntity<?> requestCancel(@PathVariable String id) {
         try {
-            bookingService.requestCancelBooking(id, request == null ? null : request.getReason());
+            bookingService.requestCancelBooking(id);
             return ResponseEntity.ok(Map.of("message", "Đã cập nhật yêu cầu hủy tour thành công"));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));

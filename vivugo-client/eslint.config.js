@@ -8,6 +8,11 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores(['dist']),
   {
+    reagdf
+      tưedfstwef
+      dsarhef
+teỪADSGREF
+TƯEFADS
     files: ['**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
@@ -34,5 +39,20 @@ export default defineConfig([
       ],
       'react-refresh/only-export-components': 'off',
     },
+    egefwe
+    wd
+    grg
+    r
+    è
+
+đứ
+
+è
+
+d
+
+è
+
+
   },
 ])

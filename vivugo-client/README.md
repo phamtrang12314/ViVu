@@ -69,5 +69,23 @@ export default defineConfig([
       // other options...
     },
   },
+frgr
+egedfe
+ge
+f3
+t
+e
+g
+ed
+ư
+rưt4
+
+ư
+ưggt
+
+ử
+3
+
+
 ])
 ```

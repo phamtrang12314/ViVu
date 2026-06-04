@@ -11,6 +11,10 @@ target/
 *.err.log
 *.out.log
 *.dumpstream
+egfadv
+egwsdv
+ewgdsv
+egds
 logs/
 
 # Local environment
@@ -29,9 +33,31 @@ Thumbs.db
 
 # Maven wrapper cache
 **/.mvn/wrapper/maven-wrapper.jar
+vdjgdhewgwjnxjsbdsnhjdshn
+
 
 # Local screenshots and generated checks
 *-check.png
 *-final-check.png
 *-after5s.png
 *-after-login-check.png
+# IDE and OS files
+.idea/
+.vscode/
+.metadata/
+.github/modernize/
+*.iml
+.DS_Store
+Thumbs.db
+
+*-final-check.png
+*-after5s.png
+*-after-login-check.png
+# IDE and OS files
+.idea/
+.vscode/
+.metadata/
+.github/modernize/
+*.iml
+.DS_Store
+Thumbs.db

@@ -1,0 +1,248 @@
+@startuml
+left to right direction
+skinparam classAttributeIconSize 0
+
+class Account {
+  +accountID: String
+  +userName: String
+  +password: String
+  +role: RoleType
+  +isLocked: boolean
+}
+
+rưhsfbwge
+gứdv
+egwsdv
+ewgfdsv
+èwsd
+class Admin {
+  +adminID: String
+  +name: String
+  +phoneNumber: String
+  +email: String
+  +password: String
+  +role: RoleType
+  +locked: boolean
+}
+
+class User {
+  +userID: String
+  +name: String
+  +email: String
+  +phoneNumber: String
+  +avatarURL: String
+  +address: String
+}
+
+class TourType {
+  +tourTypeID: String
+  +nameType: String
+  +description: String
+}
+
+class Tour {
+  +tourID: String
+  +title: String
+  +description: String
+  +startDate: LocalDate
+  +endDate: LocalDate
+  +durationDays: int
+  +durationNights: int
+  +departurePlace: String
+  +priceAdult: Double
+  +priceChild: Double
+  +maxParticipants: int
+  +minParticipants: int
+  +imageURL: String
+  +reviewVideoUrl: String
+  +status: TourStatus
+  +ranking: Integer
+}
+
+class Destination {
+  +destinationID: String
+  +nameDes: String
+  +location: String
+  +country: String
+  +region: String
+}
+
+class Image {
+  +imageID: String
+  +url: String
+  +caption: String
+}
+
+class TourImage {
+  +tourImageID: String
+  +url: String
+  +caption: String
+}
+
+class TourDestination {
+  +tourDestinationID: String
+}
+
+class Itinerary {
+  +itineraryID: String
+  +dayNumber: int
+  +title: String
+  +description: String
+}
+
+class Promotion {
+  +promotionID: String
+  +title: String
+  +description: String
+  +discountPercentage: int
+  +discountAmount: Double
+  +limitUsage: int
+  +currentUsage: int
+  +startDate: LocalDate
+  +endDate: LocalDate
+  +status: PromotionStatus
+}
+
+class TourPromotion {
+  +tourPromotionID: String
+}
+
+class Booking {
+  +bookingID: String
+  +bookingDate: LocalDateTime
+  +numAdults: int
+  +numChildren: int
+  +totalPrice: Double
+  +discountAmount: Double
+  +finalAmount: Double
+  +status: BookingStatus
+  +refundStatus: RefundStatus
+  +refundedAt: LocalDateTime
+}
+
+class Participant {
+  +participantID: String
+  +customerName: String
+  +customerPhone: String
+  +identification: String
+  +gender: Gender
+  +participantType: ParticipantType
+}
+
+class Invoice {
+  +invoiceID: String
+  +totalAmount: Double
+  +taxPercentage: Double
+  +createdAt: LocalDateTime
+}
+
+class Payment {
+  +paymentID: String
+  +amountPaid: Double
+  +paymentDate: LocalDateTime
+  +status: PaymentStatus
+  +paymentMethod: String
+  +transactionCode: String
+}
+
+class Review {
+  +reviewID: String
+  +rating: int
+  +comment: String
+  +videoUrl: String
+  +createdAt: LocalDateTime
+  +status: ReviewStatus
+  +adminReply: String
+  +repliedAt: LocalDateTime
+  +repliedBy: String
+}
+
+class Favorite {
+  +favoriteID: String
+  +addedAt: LocalDateTime
+}
+
+class TourViewEvent {
+  +id: String
+  +sessionId: String
+  +viewedRegion: String
+  +viewedPrice: Double
+  +viewedAt: LocalDateTime
+}
+
+class SupportConversation {
+  +conversationID: String
+  +customerName: String
+  +customerEmail: String
+  +customerPhone: String
+  +lastMessagePreview: String
+  +replied: boolean
+  +lastMessageAt: LocalDateTime
+}
+
+class SupportMessage {
+  +supportMessageID: String
+  +senderType: SupportMessageSenderType
+  +senderName: String
+  +content: String
+  +createdAt: LocalDateTime
+}
+
+class ContactMessage {
+  +contactMessID: String
+  +name: String
+  +subject: String
+  +email: String
+  +phone: String
+  +message: String
+  +sentAt: LocalDateTime
+  +responded: boolean
+  +respondedAt: LocalDateTime
+  +respondedBy: String
+}
+
+class OtpCode {
+  +otpID: String
+  +email: String
+  +code: String
+  +purpose: String
+  +expiresAt: LocalDateTime
+  +used: boolean
+}
+
+Account "1" -- "1" User : profile
+TourType "1" -- "0..*" Tour : categorizes
+
+Tour "1" -- "0..*" TourImage : images
+Tour "1" -- "0..*" Itinerary : itinerary
+Tour "1" -- "0..*" Booking : bookings
+Tour "1" -- "0..*" Review : reviews
+Tour "1" -- "0..*" Favorite : favorites
+Tour "1" -- "0..*" TourPromotion : promotions
+Tour "1" -- "0..*" TourDestination : destinations
+Tour "1" -- "0..*" TourViewEvent : view events
+
+Destination "1" -- "0..*" Image : images
+Destination "1" -- "0..*" TourDestination : mapping
+
+Promotion "1" -- "0..*" TourPromotion : applies
+Promotion "1" -- "0..*" Booking : used in
+
+User "1" -- "0..*" Booking : books
+User "1" -- "0..*" Review : writes
+User "1" -- "0..*" Favorite : saves
+User "1" -- "0..*" TourViewEvent : views
+User "1" -- "0..*" ContactMessage : sends
+User "1" -- "0..*" SupportConversation : owns
+
+Booking "1" -- "1" Invoice : invoice
+Invoice "1" -- "0..*" Payment : payments
+Booking "1" -- "0..*" Participant : participants
+
+SupportConversation "1" -- "0..*" SupportMessage : messages
+SupportConversation "1" -- "0..*" ContactMessage : related
+
+@enduml
+
+
+hdrjhdjd

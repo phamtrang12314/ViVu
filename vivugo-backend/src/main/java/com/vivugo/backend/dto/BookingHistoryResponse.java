@@ -20,7 +20,6 @@ public class BookingHistoryResponse {
     private BookingStatus status;
     private PaymentStatus paymentStatus;
     private RefundStatus refundStatus;
-    private String cancellationReason;
     private int numAdults;
     private int numChildren;
 
@@ -36,7 +35,6 @@ public class BookingHistoryResponse {
         this.status = booking.getStatus();
         this.paymentStatus = resolvePaymentStatus(booking);
         this.refundStatus = resolveRefundStatus(booking, this.paymentStatus);
-        this.cancellationReason = booking.getCancellationReason();
         this.numAdults = booking.getNumAdults();
         this.numChildren = booking.getNumChildren();
     }
@@ -75,7 +73,6 @@ public class BookingHistoryResponse {
     public BookingStatus getStatus() { return status; }
     public PaymentStatus getPaymentStatus() { return paymentStatus; }
     public RefundStatus getRefundStatus() { return refundStatus; }
-    public String getCancellationReason() { return cancellationReason; }
     public int getNumAdults() { return numAdults; }
     public int getNumChildren() { return numChildren; }
 
@@ -88,7 +85,6 @@ public class BookingHistoryResponse {
     public void setStatus(BookingStatus status) { this.status = status; }
     public void setPaymentStatus(PaymentStatus paymentStatus) { this.paymentStatus = paymentStatus; }
     public void setRefundStatus(RefundStatus refundStatus) { this.refundStatus = refundStatus; }
-    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
     public void setNumAdults(int numAdults) { this.numAdults = numAdults; }
     public void setNumChildren(int numChildren) { this.numChildren = numChildren; }
 }

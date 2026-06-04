@@ -31,7 +31,7 @@ const SUPPORT_PHONE_KEY = 'vivugo_support_phone'
 const getSupportStorageKey = (baseKey: string, identity: string) => `${baseKey}:${identity}`
 
 const buildAvatarUrl = (nameOrEmail?: string) => {
-  const name = nameOrEmail?.trim() || 'Khách hàng'
+  const name = nameOrEmail?.trim() || 'Kh?ch h?ng'
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=64748b&color=fff&size=128&bold=true`
 }
 
@@ -43,7 +43,7 @@ export default function Chatbox() {
   const [messages, setMessages] = useState<AiMessage[]>([
     {
       role: 'bot',
-      content: 'Xin chào! Mình là ViVuGo AI. Bạn muốn tìm tour theo vùng miền, ngân sách hay cần hỗ trợ đặt tour?'
+      content: 'Xin ch?o! M?nh l? ViVuGo AI. B?n mu?n t?m tour theo v?ng mi?n, ng?n s?ch hay c?n h? tr? ??t tour?'
     }
   ])
   const [input, setInput] = useState('')
@@ -115,7 +115,7 @@ export default function Chatbox() {
         ...prev,
         {
           role: 'bot',
-          content: data?.reply || 'Mình đã phân tích yêu cầu của bạn. Bạn xem các gợi ý bên dưới nhé.',
+          content: data?.reply || 'M?nh ?? ph?n t?ch y?u c?u c?a b?n. B?n xem c?c g?i ? b?n d??i nh?.',
           suggestedTours: data?.tours || []
         }
       ])
@@ -171,7 +171,7 @@ export default function Chatbox() {
     mutationFn: async (firstMessage: string) => {
       return contactApi.startSupportChat({
         conversationId: supportConversationId || undefined,
-        name: supportName || userData?.name || 'Khách hàng',
+        name: supportName || userData?.name || 'Kh?ch h?ng',
         email: supportEmail || userData?.email || profile?.email || '',
         phone: supportPhone || userData?.phoneNumber || '',
         message: firstMessage
@@ -361,7 +361,7 @@ export default function Chatbox() {
                             {msg.suggestedTours.map((tour, index) => {
                               if (!tour) return null
                               const safeId = tour.tourID || (tour as any).tourId || (tour as any).id
-                              const price = tour.finalPrice ? `${tour.finalPrice.toLocaleString('vi-VN')}đ` : 'Liên hệ'
+                              const price = tour.finalPrice ? `${tour.finalPrice.toLocaleString('vi-VN')}?` : 'Li?n h?'
                               const img = resolveAssetUrl(tour.imageURL, 'https://placehold.co/400x256?text=Tour')
 
                               return (
@@ -423,13 +423,13 @@ export default function Chatbox() {
                 <div ref={scrollRef} className='flex-1 overflow-y-auto bg-gray-50 p-4 scroll-smooth'>
                   {!isAuthenticated && (
                     <div className='mb-4 rounded-xl border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-600'>
-                      <p className='font-semibold text-gray-800'>Bạn cần đăng nhập để chat với Admin.</p>
-                      <p className='mt-1'>Khi chưa đăng nhập bạn vẫn chat được với AI bình thường.</p>
+                      <p className='font-semibold text-gray-800'>B?n c?n ??ng nh?p ?? chat v?i Admin.</p>
+                      <p className='mt-1'>Khi ch?a ??ng nh?p b?n v?n chat ???c v?i AI b?nh th??ng.</p>
                       <Link
                         to='/login'
                         className='mt-3 inline-flex rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700'
                       >
-                        Đăng nhập ngay
+                        ??ng nh?p ngay
                       </Link>
                     </div>
                   )}
@@ -511,7 +511,7 @@ export default function Chatbox() {
                     </button>
                   </div>
                   {!isAuthenticated && (
-                    <p className='mt-2 text-xs text-red-500'>Bạn cần đăng nhập để chat với admin.</p>
+                    <p className='mt-2 text-xs text-red-500'>B?n c?n ??ng nh?p ?? chat v?i admin.</p>
                   )}
                   {isAuthenticated && !supportConversationId && !supportCanStart && (
                     <p className='mt-2 text-xs text-red-500'>Vui lòng nhập email để admin có thể phản hồi.</p>
